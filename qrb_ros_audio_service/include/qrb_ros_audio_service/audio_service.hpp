@@ -4,10 +4,12 @@
 #ifndef QRB_ROS_AUDIO_SERVICE__AUDIO_SERVER_HPP_
 #define QRB_ROS_AUDIO_SERVICE__AUDIO_SERVER_HPP_
 
+// clang-format off
 #include <rclcpp/rclcpp.hpp>
 #include <rmw/types.h>
 
 #include "qrb_ros_audio_service_msgs/srv/audio_request.hpp"
+// clang-format on
 
 using AudioService = qrb_ros_audio_service_msgs::srv::AudioRequest;
 

@@ -14,24 +14,30 @@ namespace audio_manager
 
 PlaybackStream::PlaybackStream(uint32_t stream_handle,
     std::string source,
+    uint32_t sample_rate,
+    uint8_t channels,
+    uint8_t sample_format,
     std::string coding_format,
     uint8_t volume,
     std::string play_mode,
-    int8_t repeat)
+    int8_t repeat,
+    std::string subs_name)
+  : Stream(stream_handle, sample_rate, channels, sample_format, coding_format)
 {
-  AM_LOGD(LOG_TAG, "stream handle 0x" << (std::ostringstream() << std::hex << stream_handle).str()
-                                      << ", source " << source << ", coding_format "
-                                      << coding_format << ", volume " << static_cast<int>(volume)
-                                      << ", play_mode " << play_mode << ", repeat "
-                                      << static_cast<int>(repeat));
+  AM_LOGD(LOG_TAG, "stream handle 0x"
+                       << (std::ostringstream() << std::hex << stream_handle).str() << ", source "
+                       << source << ", sample_rate " << sample_rate << ", channels "
+                       << static_cast<int>(channels) << ", sample_format "
+                       << static_cast<int>(sample_format) << ", coding_format " << coding_format
+                       << ", volume " << static_cast<int>(volume) << ", play_mode " << play_mode
+                       << ", repeat " << static_cast<int>(repeat) << ", source " << source);
 
-  stream_configs_.stream_handle = stream_handle;
   stream_configs_.type = StreamType::PLAYBACK;
   stream_configs_.source = source;
-  stream_configs_.coding_format = coding_format;
   stream_configs_.volume = (volume == 0) ? 80 : volume;
   stream_configs_.play_mode = play_mode;
   stream_configs_.repeat = repeat;
+  stream_configs_.subs_name = subs_name;
 
   stream_configs_.state = StreamState::INIT;
 }

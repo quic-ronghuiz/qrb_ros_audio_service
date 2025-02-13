@@ -53,7 +53,7 @@ class AudioServiceClient(Node):
             req.command = "stop"
             self.send_request(req)
 
-        if self.stream_handle and (self.mode == 'step-by-step'):
+        if self.stream_handle and (self.mode == "step-by-step"):
             time.sleep(0.5)
 
             print("release stream")
@@ -82,13 +82,14 @@ def main():
     parser.add_argument("--set-mute", action="store_true")
     parser.add_argument("--type", type=str, default="")
     parser.add_argument("--mode", type=str, default="step-by-step")
-    parser.add_argument("--source", type=str, default="security")
+    parser.add_argument("--source", type=str, default="")
     parser.add_argument("--volume", type=int, default=100)
     parser.add_argument("--repeat", type=int, default=0)
     parser.add_argument("--channels", type=int, default=1)
     parser.add_argument("--sample_rate", type=int, default=16000)
     parser.add_argument("--sample_format", type=int, default=16)
     parser.add_argument("--pub_pcm", type=str2bool, default=False)
+    parser.add_argument("--topic_name", type=str, default="")
     parser.add_argument("--stream_handle", type=int, default=0)
     parser.add_argument("--mute", type=str2bool, default=False)
     args = parser.parse_args()
@@ -101,6 +102,16 @@ def main():
     exit = False
 
     req = AudioRequest.Request()
+    req.audio_info = AudioInfo(
+        channels=args.channels,
+        sample_rate=args.sample_rate,
+        sample_format=args.sample_format,
+    )
+    if len(args.source) != 0:
+        req.source = args.source
+    if len(args.topic_name) != 0:
+        req.topic_name = args.topic_name
+
     if args.get_buildin_sound:
         req.command = "get-buildin-sound"
         audio_service_client.get_logger().info("request get-buildin-sound")
@@ -114,31 +125,35 @@ def main():
         else:
             req.command = "create"
         req.type = args.type
-        req.source = args.source
         req.volume = args.volume
         req.repeat = args.repeat
         audio_service_client.get_logger().info(
-            "request playback. mode %s source %s volume %d repeat %d"
-            % (args.mode, req.source, req.volume, req.repeat)
+            "request playback. mode %s source %s channels %d sample_rate %d sample_format %d volume %d repeat %d topic_name %s"
+            % (
+                args.mode,
+                req.source,
+                args.channels,
+                args.sample_rate,
+                args.sample_format,
+                req.volume,
+                req.repeat,
+                req.topic_name,
+            )
         )
     elif args.type == "record":
-        req.audio_info = AudioInfo(
-            channels=args.channels,
-            sample_rate=args.sample_rate,
-            sample_format=args.sample_format,
-        )
+
         req.type = args.type
         req.command = "create"
-        req.source = args.source
         req.pub_pcm = args.pub_pcm
         audio_service_client.get_logger().info(
-            "request record. source %s channels %d sample_rate %d sample_format %d pub_pcm %d"
+            "request record. source %s channels %d sample_rate %d sample_format %d pub_pcm %d topic_name %s"
             % (
                 req.source,
                 args.channels,
                 args.sample_rate,
                 args.sample_format,
                 req.pub_pcm,
+                req.topic_name,
             )
         )
     elif args.set_mute and (args.stream_handle != 0):

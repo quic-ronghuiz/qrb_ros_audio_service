@@ -1,10 +1,12 @@
 // Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
+// clang-format off
 #include <cstdint>
 
 #include "qrb_ros_audio_service/audio_service.hpp"
 #include "qrb_audio_manager/audio_manager.hpp"
+// clang-format on
 
 using namespace std::placeholders;
 
@@ -31,7 +33,7 @@ AudioServer::AudioServer(const rclcpp::NodeOptions & options)
       std::bind(&AudioServer::service_callback, this, _1, _2, _3), rmw_qos_profile_services_default,
       callback_group_);
 
-  AudioManager::getInstance();
+  AudioManager::get_instance();
 
   rclcpp::on_shutdown(std::bind(&AudioServer::shutdown_callback, this));
 }
@@ -59,6 +61,7 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
   auto repeat = request->repeat;
   auto stream_handle_req = request->stream_handle;
   auto pub_pcm = request->pub_pcm;
+  auto topic_name = request->topic_name;
   auto mute = request->mute;
 
   std::string play_mode = "normal";
@@ -66,7 +69,7 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
   std::vector<std::string> buildin_sound_name = {};
   auto buildin_sound_count = 0;
 
-  auto am = AudioManager::getInstance();
+  auto am = AudioManager::get_instance();
 
   switch (static_cast<int>(audio_manager_cmd_name[command])) {
     case static_cast<int>(AudioManagerCommand::PLAY):
@@ -75,31 +78,36 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
     case static_cast<int>(AudioManagerCommand::CREATE):
       if ((type == "playback") || (play_mode == "one-touch")) {
         RCLCPP_INFO(this->get_logger(),
-            "source %s, coding_format %s, volume %d, play_mode %s, repate %d", source.c_str(),
-            coding_format.c_str(), volume, play_mode.c_str(), repeat);
-        if (!(source.empty())) {
+            "source %s, coding_format %s, volume %d, play_mode %s, repate %d topic_name %s",
+            source.c_str(), coding_format.c_str(), volume, play_mode.c_str(), repeat,
+            topic_name.c_str());
+        if (!source.empty() && !topic_name.empty()) {
+          RCLCPP_ERROR(this->get_logger(), "either source or topic_name can exist, but not both");
+          break;
+        }
+        if (!source.empty() || !topic_name.empty()) {
           try {
-            stream_handle_by_create =
-                am->create_playback_stream(source, coding_format, volume, play_mode, repeat);
+            stream_handle_by_create = am->create_playback_stream(source, sample_rate, channels,
+                sample_format, coding_format, volume, play_mode, repeat, topic_name);
             ret = true;
-          } catch (const char * msg) {
-            RCLCPP_ERROR(this->get_logger(), "%s", msg);
+          } catch (const std::exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "%s", e.what());
           }
         }
       } else if (type == "record") {
         RCLCPP_INFO(this->get_logger(),
             "source %s, channels %d, sample_rate %d, sample_format %d, "
-            "coding_format %s, pub_pcm %s",
+            "coding_format %s, pub_pcm %s, topic_name %s",
             source.c_str(), channels, sample_rate, sample_format, coding_format.c_str(),
-            (pub_pcm ? "true" : "false"));
+            (pub_pcm ? "true" : "false"), topic_name.c_str());
         if (!((source.empty() && !pub_pcm) || (0 == channels) || (0 == sample_rate) ||
                 (0 == sample_format))) {
           try {
             stream_handle_by_create = am->create_record_stream(
-                sample_rate, channels, sample_format, coding_format, source, pub_pcm);
+                sample_rate, channels, sample_format, coding_format, source, pub_pcm, topic_name);
             ret = true;
-          } catch (const char * msg) {
-            RCLCPP_ERROR(this->get_logger(), "%s", msg);
+          } catch (const std::exception & e) {
+            RCLCPP_ERROR(this->get_logger(), "%s", e.what());
           }
         }
       }
@@ -137,7 +145,7 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
 
 void AudioServer::shutdown_callback()
 {
-  AudioManager::getInstance()->clean();
+  AudioManager::get_instance()->clean();
 }
 
 }  // namespace audio_service

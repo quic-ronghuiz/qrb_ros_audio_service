@@ -1,9 +1,11 @@
 // Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
+// clang-format off
 #include <cinttypes>
 
 #include "qrb_ros_audio_service/audio_common_client.hpp"
+// clang-format on
 
 using namespace std::placeholders;
 
@@ -170,16 +172,19 @@ bool AudioCommonClient::stream_cb(const void * const payload,
   switch (cmd) {
     case qrb::audio_manager::StreamCommand::OPEN:
       if (configs->type == StreamType::PLAYBACK) {
-        goal_msg->audio_info.coding_format = configs->coding_format;
         goal_msg->repeat = configs->repeat;
         goal_msg->volume = configs->volume;
+        goal_msg->topic_name = configs->subs_name;
       } else {
-        goal_msg->audio_info.sample_rate = configs->sample_rate;
-        goal_msg->audio_info.channels = configs->channels;
-        goal_msg->audio_info.sample_format = configs->sample_format;
-        goal_msg->audio_info.coding_format = configs->coding_format;
         goal_msg->pub_pcm = configs->pub_pcm;
+        goal_msg->topic_name = configs->pub_name;
       }
+
+      goal_msg->audio_info.sample_rate = configs->sample_rate;
+      goal_msg->audio_info.channels = configs->channels;
+      goal_msg->audio_info.sample_format = configs->sample_format;
+      goal_msg->audio_info.coding_format = configs->coding_format;
+
       goal_msg->audio_service_stream_handle = configs->stream_handle;
       break;
     case qrb::audio_manager::StreamCommand::START:
