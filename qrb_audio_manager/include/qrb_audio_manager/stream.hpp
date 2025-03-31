@@ -66,6 +66,8 @@ struct StreamConfigs
   uint8_t volume{ 50 };
   bool mute{ false };
   bool pub_pcm{ false };
+  std::string pub_name;
+  std::string subs_name;
 };
 
 struct DomainConfigs
@@ -96,6 +98,12 @@ public:
       bool use_async);
 
 protected:
+  Stream(){};
+  Stream(uint32_t stream_handle,
+      uint32_t sample_rate,
+      uint8_t channels,
+      uint8_t sample_format,
+      std::string coding_format);
   StreamConfigs stream_configs_;
   std::function<bool(const void * const, StreamCommand, uint32_t &)> get_domain_cb(
       uint8_t domain_id);
@@ -114,7 +122,8 @@ public:
       uint8_t sample_format,
       std::string coding_format,
       std::string source,
-      bool pub_pcm);
+      bool pub_pcm,
+      std::string pub_name);
 };
 
 class PlaybackStream : public Stream
@@ -122,10 +131,14 @@ class PlaybackStream : public Stream
 public:
   PlaybackStream(uint32_t stream_handle,
       std::string source,
+      uint32_t sample_rate,
+      uint8_t channels,
+      uint8_t sample_format,
       std::string coding_format,
       uint8_t volume,
       std::string play_mode,
-      int8_t repeat);
+      int8_t repeat,
+      std::string subs_name);
   bool set_mute(bool mute);
 };
 

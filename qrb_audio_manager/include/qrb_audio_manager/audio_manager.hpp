@@ -21,16 +21,21 @@ class IAudioManager
 {
 public:
   virtual uint32_t create_playback_stream(std::string source,
+      uint32_t sample_rate,
+      uint8_t channels,
+      uint8_t sample_format,
       std::string coding_format,
       uint8_t volume,
       std::string play_mode,
-      int8_t repeat) = 0;
+      int8_t repeat,
+      std::string subs_name) = 0;
   virtual uint32_t create_record_stream(uint32_t sample_rate,
       uint8_t channels,
       uint8_t sample_format,
       std::string coding_format,
       std::string source,
-      bool pub_pcm) = 0;
+      bool pub_pcm,
+      std::string pub_name) = 0;
   virtual bool start_stream(uint32_t stream_handle) = 0;
   virtual bool stop_stream(uint32_t stream_handle) = 0;
   virtual bool release_stream(uint32_t stream_handle) = 0;
@@ -63,25 +68,23 @@ extern std::map<std::string, AudioManagerPlayMode> audio_manager_play_mode;
 class AudioManager : public IAudioManager
 {
 public:
-  AudioManager() : worker_([this] { this->worker_thread(std::ref(queue_)); }) {}
-  ~AudioManager()
-  {
-    queue_.stop();
-    if (worker_.joinable())
-      worker_.join();
-  }
-  static AudioManager * getInstance();
+  static AudioManager * get_instance();
   uint32_t create_playback_stream(std::string source,
+      uint32_t sample_rate,
+      uint8_t channels,
+      uint8_t sample_format,
       std::string coding_format,
       uint8_t volume,
       std::string play_mode,
-      int8_t repeat) override;
+      int8_t repeat,
+      std::string subs_name) override;
   uint32_t create_record_stream(uint32_t sample_rate,
       uint8_t channels,
       uint8_t sample_format,
       std::string coding_format,
       std::string source,
-      bool pub_pcm) override;
+      bool pub_pcm,
+      std::string pub_name) override;
   bool start_stream(uint32_t stream_handle) override;
   bool stop_stream(uint32_t stream_handle) override;
   bool release_stream(uint32_t stream_handle) override;
@@ -95,6 +98,13 @@ public:
   void clean() { streams_.clear(); };
 
 private:
+  AudioManager() : worker_([this] { this->worker_thread(std::ref(queue_)); }) {}
+  ~AudioManager()
+  {
+    queue_.stop();
+    if (worker_.joinable())
+      worker_.join();
+  }
   static AudioManager * instance_;
   std::unordered_map<uint32_t, std::shared_ptr<Stream>> streams_{};
   std::map<std::string, std::string> buildin_sounds_{};

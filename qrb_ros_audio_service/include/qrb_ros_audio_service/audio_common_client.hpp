@@ -1,9 +1,10 @@
 // Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-#ifndef QRB_ROS_DEMOS_ACTION__ACTION_CLIENT_HPP_
-#define QRB_ROS_DEMOS_ACTION__ACTION_CLIENT_HPP_
+#ifndef QRB_ROS_AUDIO_SERVICE__AUDIO_COMMON_CLIENT_HPP_
+#define QRB_ROS_AUDIO_SERVICE__AUDIO_COMMON_CLIENT_HPP_
 
+// clang-format off
 #include <memory>
 
 #include <rclcpp/rclcpp.hpp>
@@ -11,6 +12,7 @@
 
 #include "qrb_audio_manager/audio_manager.hpp"
 #include "qrb_ros_audio_common_msgs/action/audio_common.hpp"
+// clang-format on
 
 using AudioCommonAction = qrb_ros_audio_common_msgs::action::AudioCommon;
 using GoalHandleAudioCommonAction = rclcpp_action::ClientGoalHandle<AudioCommonAction>;
@@ -52,4 +54,4 @@ private:
 }  // namespace audio_service
 }  // namespace qrb_ros
 
-#endif  // QRB_ROS_DEMOS_ACTION__ACTION_CLIENT_HPP_
+#endif  // QRB_ROS_AUDIO_SERVICE__AUDIO_COMMON_CLIENT_HPP_

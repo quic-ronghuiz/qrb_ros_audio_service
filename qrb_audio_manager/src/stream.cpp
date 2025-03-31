@@ -3,15 +3,18 @@
 
 #define LOG_TAG "Stream"
 
+// clang-format off
 #include <sstream>
 
 #include "qrb_audio_manager/stream.hpp"
+// clang-format on
 
 namespace qrb
 {
 namespace audio_manager
 {
 
+// clang-format off
 std::map<StreamType, std::string> audio_stream_type_name {
   { StreamType::RECORD, "record" },
   { StreamType::PLAYBACK, "playback" }
@@ -24,8 +27,22 @@ std::map<StreamCommand, std::string> audio_stream_cmd_name {
   { StreamCommand::CLOSE, "close" },
   { StreamCommand::MUTE, "mute" }
 };
+// clang-format on
 
 DomainConfigs Stream::domain_configs_[DOMAIN_ID_MAX];
+
+Stream::Stream(uint32_t stream_handle,
+    uint32_t sample_rate,
+    uint8_t channels,
+    uint8_t sample_format,
+    std::string coding_format)
+{
+  stream_configs_.stream_handle = stream_handle;
+  stream_configs_.sample_rate = sample_rate;
+  stream_configs_.channels = channels;
+  stream_configs_.sample_format = sample_format;
+  stream_configs_.coding_format = coding_format;
+}
 
 bool Stream::open()
 {

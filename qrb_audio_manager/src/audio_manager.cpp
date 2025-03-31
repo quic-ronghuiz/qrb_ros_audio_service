@@ -3,6 +3,7 @@
 
 #define LOG_TAG "AudioManager"
 
+// clang-format off
 #include <string>
 #include <random>
 #include <sstream>
@@ -11,6 +12,7 @@
 
 #include "qrb_audio_manager/stream.hpp"
 #include "qrb_audio_manager/audio_manager.hpp"
+// clang-format on
 
 #define BUILDIN_SOUNDS_PATH "/opt/qcom/qirp-sdk/usr/share/qrb-audio-manager/sounds"
 
@@ -21,6 +23,7 @@ namespace qrb
 namespace audio_manager
 {
 
+// clang-format off
 std::map<std::string, AudioManagerCommand> audio_manager_cmd_name {
   { "play", AudioManagerCommand::PLAY },
   { "create", AudioManagerCommand::CREATE },
@@ -35,10 +38,11 @@ std::map<std::string, AudioManagerPlayMode> audio_manager_play_mode {
   { "normal", AudioManagerPlayMode::NORMAL },
   { "one-touch", AudioManagerPlayMode::ONE_TOUCH }
 };
+// clang-format on
 
 AudioManager * AudioManager::instance_ = nullptr;
 
-AudioManager * AudioManager::getInstance()
+AudioManager * AudioManager::get_instance()
 {
   if (instance_ == nullptr) {
     instance_ = new AudioManager();
@@ -49,10 +53,14 @@ AudioManager * AudioManager::getInstance()
 }
 
 uint32_t AudioManager::create_playback_stream(std::string source,
+    uint32_t sample_rate,
+    uint8_t channels,
+    uint8_t sample_format,
     std::string coding_format,
     uint8_t volume,
     std::string play_mode,
-    int8_t repeat)
+    int8_t repeat,
+    std::string subs_name)
 {
   auto stream_handle = generate_key();
   while (streams_.find(stream_handle) != streams_.end()) {
@@ -63,8 +71,8 @@ uint32_t AudioManager::create_playback_stream(std::string source,
   if (it != buildin_sounds_.end())
     source = it->second;
 
-  std::shared_ptr<Stream> stream_ptr = std::make_shared<PlaybackStream>(
-      stream_handle, source, coding_format, volume, play_mode, repeat);
+  std::shared_ptr<Stream> stream_ptr = std::make_shared<PlaybackStream>(stream_handle, source,
+      sample_rate, channels, sample_format, coding_format, volume, play_mode, repeat, subs_name);
 
   if (!stream_ptr->open()) {
     stream_ptr = nullptr;
@@ -93,15 +101,16 @@ uint32_t AudioManager::create_record_stream(uint32_t sample_rate,
     uint8_t sample_format,
     std::string coding_format,
     std::string source,
-    bool pub_pcm)
+    bool pub_pcm,
+    std::string pub_name)
 {
   auto stream_handle = generate_key();
   while (streams_.find(stream_handle) != streams_.end()) {
     stream_handle = generate_key();
   }
 
-  std::shared_ptr<Stream> stream_ptr = std::make_shared<RecordStream>(
-      stream_handle, sample_rate, channels, sample_format, coding_format, source, pub_pcm);
+  std::shared_ptr<Stream> stream_ptr = std::make_shared<RecordStream>(stream_handle, sample_rate,
+      channels, sample_format, coding_format, source, pub_pcm, pub_name);
 
   if (!stream_ptr->open()) {
     stream_ptr = nullptr;
