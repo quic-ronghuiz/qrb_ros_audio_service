@@ -1,22 +1,27 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>qrb_ros_audio_service</name>
+  <name>qrb_ros_audio_common</name>
   <version>0.0.1</version>
-  <description>QRB ROS Audio Service</description>
-  <maintainer email="quic_yuchpan@quicinc.com">yuchpan</maintainer>
+  <description>qrb ros audio common package</description>
+  <maintainer email="quic_ronghuiz@quicinc.com">Ronghui Zhu</maintainer>
   <license>BSD-3-Clause-Clear</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
   <depend>rclcpp</depend>
   <depend>rclcpp_action</depend>
-  <depend>rclcpp_components</depend>
-  <depend>qrb_ros_audio_service_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>action_msgs</depend>
   <depend>qrb_ros_audio_common_msgs</depend>
-  <depend>qrb_audio_manager</depend>
+  <depend>rclcpp_components</depend>
 
-  <test_depend>ament_lint_auto</test_depend>
+  <build_depend>qrb_audio_common_lib</build_depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <exec_depend>qrb_audio_common_lib</exec_depend>
   <test_depend>ament_lint_common</test_depend>
 
   <export>
