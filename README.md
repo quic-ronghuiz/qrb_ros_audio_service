@@ -52,7 +52,7 @@ We provide two ways to use this package.
     ```
 3. On another terminal.
     ```bash
-    (docker) ros2 launch qrb_ros_audio_common component.launch.py
+    (docker) ros2 launch qrb_ros_audio_service audio_service.launch.py
     ```
 4. Run test cases on third terminal.
  - Get build-in sound names
@@ -129,7 +129,7 @@ Please follow this [steps](https://quic-qrb-ros.github.io/main/getting_started/i
     ```
 3. On another ssh terminal.
     ```bash
-    (ssh) ros2 launch qrb_ros_audio_common component.launch.py
+    (ssh) ros2 launch qrb_ros_audio_service audio_service.launch.py
     ```
 4. Run test cases on a third ssh terminal.
  - Get build-in sound names
