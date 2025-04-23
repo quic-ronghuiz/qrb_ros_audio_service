@@ -22,7 +22,7 @@ We provide two ways to use this package.
 <summary>Docker</summary>
 
 #### Setup
-1. Please follow this [steps](https://github.com/quic-qrb-ros/qrb_ros_docker?tab=readme-ov-file#quickstart) to setup docker env.
+1. Please follow this [steps](https://github.com/qualcomm-qrb-ros/qrb_ros_docker?tab=readme-ov-file#quickstart) to setup docker env.
 2. Install depency packages.
     ```bash
     (docker) sudo apt install libpulse-dev libpulse-dev
@@ -30,8 +30,8 @@ We provide two ways to use this package.
 3. Clone this repository and interface repository.
     ```bash
     (docker) cd ${QRB_ROS_WS}/src
-    (docker) git clone https://github.com/quic-qrb-ros/qrb_ros_audio_service.git
-    (docker) git clone https://github.com/quic-qrb-ros/qrb_ros_interfaces.git
+    (docker) git clone https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service.git
+    (docker) git clone https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces.git
     ```
 
 #### Build
@@ -76,7 +76,7 @@ We provide two ways to use this package.
     (docker) python3 audio_service_test.py --type='record' --source='/tmp/rec.wav' --channels=1 --sample_rate=16000 --sample_format=16
     ```
 
-For more case see [qrb_ros_audio_service_msgs](https://github.com/quic-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://quic-qrb-ros.github.io/main/index.html).
+For more case see [qrb_ros_audio_service_msgs](https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://qualcomm-qrb-ros.github.io/main/index.html).
 
 </details>
 
@@ -85,13 +85,13 @@ For more case see [qrb_ros_audio_service_msgs](https://github.com/quic-qrb-ros/q
 <summary>QIRP-SDK</summary>
 
 #### Setup
-Please follow this [steps](https://quic-qrb-ros.github.io/main/getting_started/index.html) to setup qirp-sdk env.
+Please follow this [steps](https://qualcomm-qrb-ros.github.io/main/getting_started/index.html) to setup qirp-sdk env.
 
 1. Create ros_ws directory in <qirp_decompressed_workspace>/qirp-sdk/
 2. Clone this repository and interface repository under <qirp_decompressed_workspace>/qirp-sdk/ros_ws
     ```bash
-    git clone https://github.com/quic-qrb-ros/qrb_ros_audio_service.git
-    git clone https://github.com/quic-qrb-ros/qrb_ros_interfaces.git
+    git clone https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service.git
+    git clone https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces.git
     ```
 
 #### Build
@@ -153,13 +153,13 @@ Please follow this [steps](https://quic-qrb-ros.github.io/main/getting_started/i
     python3 audio_service_test.py --type='record' --source='/tmp/rec.wav' --channels=1 --sample_rate=16000 --sample_format=16
     ```
 
-For more case see [qrb_ros_audio_service_msgs](https://github.com/quic-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://quic-qrb-ros.github.io/main/index.html).
+For more case see [qrb_ros_audio_service_msgs](https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://qualcomm-qrb-ros.github.io/main/index.html).
 
 </details>
 
 <br>
 
-You can get more details from [here](https://quic-qrb-ros.github.io/main/index.html).
+You can get more details from [here](https://qualcomm-qrb-ros.github.io/main/index.html).
 
 ## Contributing
 

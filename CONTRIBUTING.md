@@ -11,10 +11,10 @@ In general, contributors should develop on branches based off of `main` and pull
 ## Submitting a pull request
 
 1. Please read our [code of conduct](CODE-OF-CONDUCT.md) and [license](LICENSE).
-1. [Fork](https://github.com/quic-qrb-ros/qrb_ros_audio_service/fork) and clone the repository.
+1. [Fork](https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service/fork) and clone the repository.
     
     ```bash
-    git clone https://github.com/quic-qrb-ros/qrb_ros_camera.git
+    git clone https://github.com/qualcomm-qrb-ros/qrb_ros_camera.git
     ``` 
 
 1. Create a new branch based on `main`:
@@ -26,7 +26,7 @@ In general, contributors should develop on branches based off of `main` and pull
 1. Create an upstream `remote` to make it easier to keep your branches up-to-date:
 
     ```bash
-    git remote add upstream https://github.com/quic-qrb-ros/qrb_ros_camera.git
+    git remote add upstream https://github.com/qualcomm-qrb-ros/qrb_ros_camera.git
     ```
 
 1. Make your changes, add tests, and make sure the tests still pass.
