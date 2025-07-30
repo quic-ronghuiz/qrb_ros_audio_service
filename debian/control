@@ -1,0 +1,36 @@
+Source: qrb-audio-common-lib
+Section: libs
+Priority: optional
+Maintainer: Ronghui Zhu <ronghuiz@qti.qualcomm.com>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ libpulse-dev,
+ libsndfile1-dev,
+Standards-Version: 4.6.2
+Homepage: https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service
+
+Package: qrb-audio-common-lib-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+ qrb-audio-common-lib (= ${binary:Version}),
+ ${misc:Depends},
+Description: QRB Audio Common Library  - development files
+ Development files for the QRB Audio Common Library, including headers
+ and CMake configuration files needed to build applications that use
+ the library.
+
+Package: qrb-audio-common-lib
+Architecture: any
+Multi-Arch: same
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ libpulse0,
+ libsndfile1,
+Description: QRB Audio Common Library
+ qrb_audio_common_lib is a library used by qrb_ros_audio_common.
+ It is implemented based on PulseAudio’s API for playback and capture.

@@ -1,0 +1,5 @@
+qrb-audio-common-lib (1.0.0) noble; urgency=medium
+
+  * First release for Debian package.
+
+ -- Ronghui Zhu <ronghuiz@qti.qualcomm.com>  Tue, 29 Jul 2025 13:02:04 -0000
