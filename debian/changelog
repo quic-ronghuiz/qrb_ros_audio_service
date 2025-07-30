@@ -1,0 +1,5 @@
+qrb-audio-manager (1.0.0) noble; urgency=medium
+
+  * First release for Debian package.
+
+ -- -- yuchpan <yuchpan@qti.qualcomm.com>  Tue, 29 Jul 2025 12:15:42 -0000
