@@ -127,6 +127,7 @@ protected:
   static pa_context * pulse_context_;
   static pa_time_event * pulse_context_time_event_;
   static std::set<CommonAudioStream *> timestamp_streams_;
+  int file_fd = 0;
 
   CommonAudioStream(string filepath, shared_ptr<pa_sample_spec> sample_spec);
   void init_pulse_stream();

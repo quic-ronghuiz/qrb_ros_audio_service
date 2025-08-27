@@ -350,6 +350,10 @@ CommonAudioStream::~CommonAudioStream()
     sf_close(snd_file);
     snd_file = nullptr;
   }
+
+  if (file_fd) {
+    close(file_fd);
+  }
 }
 
 uint32_t CommonAudioStream::audio_stream_open(const audio_stream_info & stream_info,
