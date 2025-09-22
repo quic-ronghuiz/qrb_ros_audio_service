@@ -9,6 +9,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
 set(SOURCES
   src/audio_manager.cpp
   src/message_queue.cpp
@@ -39,3 +42,5 @@ install(TARGETS ${PROJECT_NAME}
 install(EXPORT ${PROJECT_NAME}Config
   DESTINATION share/${PROJECT_NAME}/cmake
 )
+
+ament_auto_package()

@@ -1,185 +1,284 @@
+<div align="center">
+  <h1>QRB ROS Audio Service</h1>
+  <p align="center">
+  </p>
+  <p>This ROS package delivers essential audio capabilities for playback and recording</p>
 
-# QRB ROS Audio Service
-<update with your project name and a short description>
-<Table of Contents?>
+  <a href="https://ubuntu.com/download/qualcomm-iot" target="_blank"><img src="https://img.shields.io/badge/Qualcomm%20Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Qualcomm Ubuntu"></a>
+  <a href="https://docs.ros.org/en/jazzy/" target="_blank"><img src="https://img.shields.io/badge/ROS%20Jazzy-1c428a?style=for-the-badge&logo=ros&logoColor=white" alt="Jazzy"></a>
+ 
+</div>
 
-## Overview
-The ROS package provides essential audio capabilities, it is the entry point for ROS to provide audio capabilities.
+---
 
-### Features
-It supports both step-by-step and one-touch playback, allowing playback from built-in sounds. Additionally, it offers recording functionality, with the option to save to a local file or a topic.
+## 👋 Overview
 
+> 📌 **qrb_ros_audio_service is a ROS package that provides core audio functionalities. It serves as the primary interface for audio playback and recording within the ROS ecosystem.**
 
-## Quick Start
+<div align="left">
+  <img src="./docs/assets/architecture.png" alt="architecture" width="600">
+</div>
 
-> **Note：**
-> This document 's build & run is the latest.
-> If it conflict with the online document, please follow this.
+- QRB ROS Audio Service : A ROS node that creates a service server, responds to requests from the application, and translates them into operations on the Audio Manager.
+- QRB ROS Audio Common : A ROS node that acts as a bridge between QRB ROS Audio Service and QRB Audio Common Lib.
+- QRB Audio Manager : Executes audio operations provided by the Audio Service, based on stream configurations.
+- QRB Audio Common Lib : Provides audio functionalities by calling PulseAudio APIs.
 
-We provide two ways to use this package.
+## 🔎 Table of Contents
 
-<details>
-<summary>Docker</summary>
+> 📌 If the content is extensive, we recommend adding a table of contents.
 
-#### Setup
-1. Please follow this [steps](https://github.com/qualcomm-qrb-ros/qrb_ros_docker?tab=readme-ov-file#quickstart) to setup docker env.
-2. Install depency packages.
+  * [APIs](#-apis)
+  * [Supported Targets](#-supported-targets)
+  * [Installation](#-installation)
+  * [Usage](#-usage)
+  * [Build from Source](#-build-from-source)
+  * [Contributing](#-contributing)
+  * [License](#-license)
+
+## ⚓ APIs
+
+> 📌 `qrb_ros_audio_service` APIs
+
+**ROS Interfaces**
+<table>
+  <tr>
+    <th>Interface</th>
+    <th>Name</th>
+    <th>Type</th>
+    <td>Description</td>
+  </tr>
+  <tr>
+    <td>Service</td>
+    <td>/audio_service</td>
+    <td>qrb_ros_audio_service_msgs::srv::AudioRequest</td>
+    <td>Allows ROS applications to send service requests for audio playback and recording.</td>
+  </tr>
+</table>
+
+> 📌  `qrb_ros_audio_common` APIs
+
+#### ROS parameters
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+      <td>Default Value</td>
+    </tr>
+    <tr>
+      <td>Stream_type</td>
+      <td>string</td>
+      <td>Specifies the stream type for the action: "playback" for audio playback or "capture" for audio recording.</td>
+      <td>default_stream</td>
+    </tr>
+    <tr>
+      <td>action_name</td>
+      <td>string</td>
+      <td>Specify the name of action</td>
+      <td>default_action</td>
+    </tr>
+    <tr>
+      <td>topic_name</td>
+      <td>string</td>
+      <td>Specify the name of topic</td>
+      <td>default_topic</td>
+    </tr>
+  </table>
+
+**ROS Interfaces**
+<table>
+  <tr>
+    <th>Interface</th>
+    <th>Name</th>
+    <th>Type</th>
+    <td>Description</td>
+  </tr>
+  <tr>
+    <td>Action</td>
+    <td>/ros_audio_playback</td>
+    <td>qrb_ros_audio_common_msgs::action::AudioCommon</td>
+    <td>Action for playback function, specify action name by action_name parameter</td>
+  </tr>
+  <tr>
+    <td>Action</td>
+    <td>/ros_audio_capture</td>
+    <td>qrb_ros_audio_common_msgs::action::AudioCommon</td>
+    <td>Action for record function, specify action name by action_name parameter.</td>
+  </tr>
+  <tr>
+    <td>Subscriber</td>
+    <td>/qrb_audiodata</td>
+    <td>qrb_ros_audio_common_msgs::msg::AudioData</td>
+    <td>Used for streaming audio playback. Subscribes to raw audio data from this node. Can modify the topic name using the --topic_name parameter.</td>
+  </tr>
+  <tr>
+    <td>Publisher</td>
+    <td>/qrb_audiodata</td>
+    <td>qrb_ros_audio_common_msgs::msg::AudioData</td>
+    <td>Used for streaming audio recording. Publishes real-time raw audio data during recording. Can modify the topic name using the --topic_name parameter.</td>
+  </tr>
+</table>
+
+> 📌  `qrb_audio_common_lib` APIs
+
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Parameters</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td>uint32_t audio_stream_open(const audio_stream_info & stream_info, stream_event_callback_func event_callback)</td>
+    <td>
+      <strong>stream_info</strong>:A structure specifies the configuration of stream.<br>
+      <strong>stream_event_callback_func</strong>: callback function.
+    </td>
+    <td>Open stream, will return stream_handle on succeed.</td>
+  </tr>
+  <tr>
+    <td>int audio_stream_start(uint32_t stream_handle)</td>
+    <td><strong>stream_handle</strong>: A unique identifier for steam</td>
+    <td>Start stream, return 0 on succeed.</td>
+  </tr>
+  <tr>
+    <td>int audio_stream_mute(uint32_t stream_handle, bool mute)</td>
+    <td>
+      <strong>stream_handle</strong>: A unique identifier for stream.<br>
+      <strong>mute</strong>: Boolean flag indicating whether to mute the stream.
+    </td>
+    <td>Mute or unmute stream. return 0 on succeed.</td>
+  </tr>
+  <tr>
+    <td>int audio_stream_stop(uint32_t stream_handle)</td>
+    <td><strong>stream_handle</strong>: A unique identifier for stream.</td>
+    <td>Stop stream, return 0 on succeed</td>
+  </tr>
+  <tr>
+    <td>size_t audio_stream_write(uint32_t stream_handle, size_t length, void * buf)</td>
+    <td>
+      <strong>stream_handle</strong>: A unique identifier for stream.<br>
+      <strong>length</strong>: Size to write.<br>
+      <strong>buf</strong>: Point to data buffer.
+    </td>
+    <td>Write buffer to playback stream, return actually written length.</td>
+  </tr>
+</table>
+
+## 🎯 Supported Targets
+
+<table >
+  <tr>
+    <th>Development Hardware</th>
+    <th>Hardware Overview</th>
+  </tr>
+  <tr>
+    <td>Qualcomm Dragonwing™ RB3 Gen2</td>
+    <th><a href="https://www.qualcomm.com/developer/hardware/rb3-gen-2-development-kit"><img src="https://s7d1.scene7.com/is/image/dmqualcommprod/rb3-gen2-carousel?fmt=webp-alpha&qlt=85" width="180"/></a></th>
+</table>
+
+---
+
+## ✨ Installation
+
+> [!IMPORTANT]
+> **PREREQUISITES**: The following steps need to be run on **Qualcomm Ubuntu** and **ROS Jazzy**.<br>
+> Reference [Install Ubuntu on Qualcomm IoT Platforms](https://ubuntu.com/download/qualcomm-iot) and [Install ROS Jazzy](https://docs.ros.org/en/jazzy/index.html) to setup environment. <br>
+> For Qualcomm Linux, please check out the [Qualcomm Intelligent Robotics Product SDK](https://docs.qualcomm.com/bundle/publicresource/topics/80-70018-265/introduction_1.html?vproduct=1601111740013072&version=1.4&facet=Qualcomm%20Intelligent%20Robotics%20Product%20(QIRP)%20SDK) documents.
+
+### Add Qualcomm IOT PPA for Ubuntu:
+
+```bash
+# Install Qualcomm PPA
+sudo add-apt-repository ppa:ubuntu-qcom-iot/qcom-ppa
+sudo add-apt-repository ppa:ubuntu-qcom-iot/qirp
+sudo apt update
+```
+
+### Install Packages
+
+```bash
+# Install QRB ROS Audio packages
+sudo apt install ros-jazzy-qrb-ros-audio-common ros-jazzy-qrb-ros-audio-service
+```
+
+## 🚀 Usage
+
+1. Use this launch file to run this package.
     ```bash
-    (docker) sudo apt install libpulse-dev libpulse-dev
+    source /opt/ros/jazzy/setup.sh
+    ros2 launch qrb_ros_audio_common component.launch.py
     ```
-3. Clone this repository and interface repository.
+2. On another ssh terminal.
     ```bash
-    (docker) cd ${QRB_ROS_WS}/src
-    (docker) git clone https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service.git
-    (docker) git clone https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces.git
+    source /opt/ros/jazzy/setup.sh
+    ros2 launch qrb_ros_audio_service audio_service.launch.py
     ```
-
-#### Build
-    ```
-	(docker) cd ${QRB_ROS_WS}
-    (docker) colcon build
-    ```
-
-#### Run
-1. Source this file to set up the environment.
+3. Run test cases on a third ssh terminal.
+ - push music file to device path like /tmp/xxx.wav.
+ - download test script.
     ```bash
-    (docker) cd ${QRB_ROS_WS}/
-    (docker) source install/local_setup.sh
+    wget https://raw.githubusercontent.com/qualcomm-qrb-ros/qrb_ros_audio_service/main/tests/audio_service_test.py
     ```
-2. Use this launch file to run this package.
-    ```bash
-    (docker) ros2 launch qrb_ros_audio_common component.launch.py
+ - setup ros2 env.
+     ```bash
+    source /opt/ros/jazzy/setup.sh
     ```
-3. On another terminal.
-    ```bash
-    (docker) ros2 launch qrb_ros_audio_service audio_service.launch.py
-    ```
-4. Run test cases on third terminal.
- - Get build-in sound names
-    ```bash
-    (docker) python3 audio_service_test.py –get-buildin-sound
-    ```
- - One-touch playback build-in sound
-    ```bash
-    (docker) python3 audio_service_test.py –mode=’one-touch’ –source=’security’ –volume=100
-    ```
- - One-touch playback and repeat build-in sound
-    ```bash
-    (docker) python3 audio_service_test.py –mode=’one-touch’ –source=’security’ –volume=100 –repeat=-1
-    ```
- - Step-by-step playback
-    ```bash
-    (docker) python3 audio_service_test.py --type='playback' --source='/tmp/xxx.wav' --volume=100
-    ```
- - Step-by-step record
-    ```bash
-    (docker) python3 audio_service_test.py --type='record' --source='/tmp/rec.wav' --channels=1 --sample_rate=16000 --sample_format=16
-    ```
-
-For more case see [qrb_ros_audio_service_msgs](https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://qualcomm-qrb-ros.github.io/main/index.html).
-
-</details>
-
-
-<details>
-<summary>QIRP-SDK</summary>
-
-#### Setup
-Please follow this [steps](https://qualcomm-qrb-ros.github.io/main/getting_started/index.html) to setup qirp-sdk env.
-
-1. Create ros_ws directory in <qirp_decompressed_workspace>/qirp-sdk/
-2. Clone this repository and interface repository under <qirp_decompressed_workspace>/qirp-sdk/ros_ws
-    ```bash
-    git clone https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service.git
-    git clone https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces.git
-    ```
-
-#### Build
-1. Build this project.
-    ```bash
-    export AMENT_PREFIX_PATH="${OECORE_NATIVE_SYSROOT}/usr:${OECORE_TARGET_SYSROOT}/usr"
-    export PYTHONPATH=${PYTHONPATH}:${OECORE_NATIVE_SYSROOT}/usr/lib/python3.12/site-packages/:${OECORE_TARGET_SYSROOT}/usr/lib/python3.12/site-packages/
-
-    colcon build --merge-install --cmake-args \
-        -DPython3_NumPy_INCLUDE_DIR=${OECORE_TARGET_SYSROOT}/usr/lib/python3.12/site-packages/numpy/core/include \
-        -DPYTHON_SOABI=cpython-312-aarch64-linux-gnu -DCMAKE_STAGING_PREFIX="$(pwd)/install" \
-        -DCMAKE_PREFIX_PATH="$(pwd)/install/share" \
-        -DBUILD_TESTING=OFF
-    ```
-
-2. Install the package.
-    ```bash
-    cd `<qirp_decompressed_workspace>/qirp-sdk/ros_ws/install`
-    tar czvf qrb_ros_audio.tar.gz lib share
-    scp qrb_ros_audio.tar.gz root@[ip-addr]:/opt/
-    ssh root@[ip-addr]
-    (ssh) tar -zxf /opt/qrb_ros_audio.tar.gz -C /opt/qcom/qirp-sdk/usr/
-    ```
-#### Run
-1. Source this file to set up the environment on your device:
-    ```bash
-    ssh root@[ip-addr]
-	(ssh) export HOME=/home
-	(ssh) setenforce 0
-	(ssh) source /usr/bin/ros_setup.sh && source /usr/share/qirp-setup.sh
-    ```
-2. Use this launch file to run this package.
-    ```bash
-    (ssh) ros2 launch qrb_ros_audio_common component.launch.py
-    ```
-3. On another ssh terminal.
-    ```bash
-    (ssh) ros2 launch qrb_ros_audio_service audio_service.launch.py
-    ```
-4. Run test cases on a third ssh terminal.
- - Get build-in sound names
-    ```bash
-    python3 audio_service_test.py –get-buildin-sound
-    ```
- - One-touch playback build-in sound
-    ```bash
-    python3 audio_service_test.py –mode=’one-touch’ –source=’security’ –volume=100
-    ```
- - One-touch playback and repeat build-in sound
-    ```bash
-    python3 audio_service_test.py –mode=’one-touch’ –source=’security’ –volume=100 –repeat=-1
-    ```
- - Step-by-step playback
+ - Step-by-step playback (sound will output on speaker)
     ```bash
     python3 audio_service_test.py --type='playback' --source='/tmp/xxx.wav' --volume=100
     ```
- - Step-by-step record
+ - Step-by-step record (will record sound input from mic and save to file)
     ```bash
     python3 audio_service_test.py --type='record' --source='/tmp/rec.wav' --channels=1 --sample_rate=16000 --sample_format=16
     ```
+ - Streaming playback
+    ```bash
+    python3 audio_service_test.py --type='playback' --channels=1 --sample_rate=16000 --sample_format=16 --pub_pcm=True --volume=100 --topic_name='loopback'
+    ```
+ - Streaming record (if start Streaming playback and Streaming record sound will loopback from mic to speaker)
+    ```bash
+    python3 audio_service_test.py --type='record' --source='/tmp/rec.wav' --channels=1 --sample_rate=16000 --sample_format=16 --topic_name='loopback'
+    ```
+---
 
-For more case see [qrb_ros_audio_service_msgs](https://github.com/qualcomm-qrb-ros/qrb_ros_interfaces/tree/main/qrb_ros_audio_service_msgs) and [here](https://qualcomm-qrb-ros.github.io/main/index.html).
+## 👨‍💻 Build from Source
 
-</details>
+### Step 1: Install dependencies: 
+```bash
+# Install build tools and dependencies
+sudo add-apt-repository ppa:ubuntu-qcom-iot/qcom-ppa
+sudo add-apt-repository ppa:ubuntu-qcom-iot/qirp
+sudo apt update
+sudo apt install build-essential cmake pkg-config
 
-<br>
+# Install ROS2 Jazzy (if not already installed)
+# Follow instructions at https://docs.ros.org/en/jazzy/Installation.html
+sudo apt install ros-jazzy-rclcpp ros-jazzy-rclcpp-components ros-jazzy-ament-cmake-auto ros-jazzy-std-msgs libpulse-dev libsndfile1-dev
+```
 
-You can get more details from [here](https://qualcomm-qrb-ros.github.io/main/index.html).
+### Step 2: Clone and Build
 
-## Contributing
+```bash
+# Navigate to your ROS2 workspace
+cd ~/ros2_ws/src
 
-We would love to have you as a part of the QRB ROS community. Whether you are helping us fix bugs, proposing new features, improving our documentation, or spreading the word, please refer to our [contribution guidelines](./CONTRIBUTING.md) and [code of conduct](./CODE_OF_CONDUCT.md).
+# Clone the repository (if not already cloned)
+git clone https://github.com/qualcomm-qrb-ros/qrb_ros_audio_service.git
 
-- Bug report: If you see an error message or encounter failures, please create a [bug report](../../issues)
-- Feature Request: If you have an idea or if there is a capability that is missing and would make development easier and more robust, please submit a [feature request](../../issues)
+# Build
+cd ~/ros2_ws
+colcon build
 
-<Update link with template>
+# Source the workspace
+source install/setup.bash
+```
 
+## 🤝 Contributing
 
-## Authors
+We love community contributions! Get started by reading our [CONTRIBUTING.md](CONTRIBUTING.md).  
+Feel free to create an issue for bug reports, feature requests, or any discussion 💡.
 
-* **Yuchao Pan** - *Initial work* - [YuchPan](https://github.com/yuchpan)
-
-See also the list of [contributors](https://github.com/QUIC-QRB-ROS/qrb_ros_audio_service/contributors) who participated in this project.
-
-
-## License
+## 📜 License
 
 Project is licensed under the [BSD-3-clause License](https://spdx.org/licenses/BSD-3-Clause.html). See [LICENSE](./LICENSE) for the full license text.
-
-
