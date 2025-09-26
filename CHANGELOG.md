@@ -10,3 +10,8 @@
 - Fix repeat not work on pipewire-pulse.
 - Close file descriptors on stream close.
 - Contributors👉 Ronghui Zhu
+
+## 1.1.0 (2025-9-26)
+
+- Version release for ROS Jazzy based on Ubuntu
+- Contributors👉 Ronghui Zhu
