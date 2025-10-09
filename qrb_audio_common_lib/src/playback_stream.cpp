@@ -89,7 +89,8 @@ int PlaybackStream::start_stream()
   LOGD("enter");
 
   if (get_stream_handle() == nullptr || get_stream_state() == PA_STREAM_READY) {
-    LOGE("stream handle(%p) state(%d) error, start fail", get_stream_handle(), get_stream_state());
+    LOGE("stream handle(%p) state(%d) error, start fail", static_cast<void *>(get_stream_handle()),
+        get_stream_state());
     return -EPERM;
   }
 
@@ -122,7 +123,7 @@ int PlaybackStream::sndfile_open()
 
   LOGI("opening %s", m_file_path.c_str());
   if ((file_fd = open(m_file_path.c_str(), O_RDONLY, 0666)) < 0) {
-    LOGE("open %s failed", m_file_path);
+    LOGE("open %s failed", m_file_path.c_str());
     return -ENOENT;
   }
 
@@ -189,7 +190,7 @@ void PlaybackStream::stream_data_callback(pa_stream * stream, size_t length, voi
   for (;;) {
     bytes_written = length;
     if ((pa_stream_begin_write(stream, &buf_pulse, &bytes_written)) < 0) {
-      LOGE("%s:pa_stream_begin_write failed(%s)", pa_strerror(pa_context_errno(pulse_context_)));
+      LOGE("pa_stream_begin_write failed(%s)", pa_strerror(pa_context_errno(pulse_context_)));
       current_stream->internal_stopstream();
     }
 

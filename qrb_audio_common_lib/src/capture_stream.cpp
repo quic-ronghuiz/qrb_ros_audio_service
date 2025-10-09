@@ -53,7 +53,8 @@ int CaptureStream::start_stream()
   LOGD("enter");
 
   if (stream == nullptr || get_stream_state() != PA_STREAM_UNCONNECTED) {
-    LOGE("stream handle(%p) state(%d) error, start fail", stream, get_stream_state());
+    LOGE("stream handle(%p) state(%d) error, start fail", static_cast<void *>(stream),
+        get_stream_state());
     return -EPERM;
   }
 
@@ -111,7 +112,7 @@ int CaptureStream::sndfile_open()
 
   LOGI("opening %s", m_file_path.c_str());
   if ((file_fd = open(m_file_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0) {
-    LOGE("open %s failed", m_file_path);
+    LOGE("open %s failed", m_file_path.c_str());
     return -ENOMEM;
   }
 
