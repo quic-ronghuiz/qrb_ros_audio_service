@@ -464,7 +464,8 @@ int CommonAudioStream::mute_stream(bool mute)
   op = pa_context_set_sink_input_mute(
       CommonAudioStream::pulse_context_, stream_index, mute, nullptr, nullptr);
   if (!op) {
-    LOGE("%s:failed to set stream(%d) to mute(%d)", stream_handle_, mute);
+    LOGE("failed to set stream(%p) to %s", static_cast<void *>(stream_handle_),
+        mute ? "mute" : "unmute");
     pa_operation_unref(op);
   }
 

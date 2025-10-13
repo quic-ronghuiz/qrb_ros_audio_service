@@ -10,3 +10,8 @@
 - Fix repeat not work on pipewire-pulse.
 - Close file descriptors on stream close.
 - Contributors👉 Ronghui Zhu
+
+## 1.0.1 (2025-10-9)
+
+- Fix ci compile error.
+- Contributors👉 Ronghui Zhu
