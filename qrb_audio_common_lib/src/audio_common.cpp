@@ -424,8 +424,12 @@ uint32_t CommonAudioStream::audio_stream_open(const audio_stream_info & stream_i
 
 void CommonAudioStream::init_pulse_stream()
 {
+  pa_channel_map channel_map;
+
+  pa_channel_map_init_extend(&channel_map, m_sample_spec->channels, PA_CHANNEL_MAP_DEFAULT);
+
   stream_handle_ = pa_stream_new(CommonAudioStream::pulse_context_,
-      std::to_string(intptr_t(this)).c_str(), m_sample_spec.get(), nullptr);
+      std::to_string(intptr_t(this)).c_str(), m_sample_spec.get(), &channel_map);
   if (stream_handle_ == nullptr) {
     LOGE("create stream:%s", pa_strerror(pa_context_errno(CommonAudioStream::pulse_context_)));
     throw std::runtime_error("create pulseaudio stream return nullptr");
