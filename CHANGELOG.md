@@ -15,3 +15,8 @@
 
 - Fix ci compile error.
 - Contributors👉 Ronghui Zhu
+
+## 1.0.2 (2025-10-22)
+
+- Fix 7 ch file playback fail.
+- Contributors👉 Ronghui Zhu
