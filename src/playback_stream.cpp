@@ -39,15 +39,18 @@ static void stream_drain_complete(pa_stream * stream, int success, void * userda
   if ((current_stream->repeat_count == -1) || (current_stream->repeat_count > 0)) {
     std::thread t([current_stream, stream] {
       if ((current_stream->repeat_count == -1) || (current_stream->repeat_count > 0)) {
+        size_t writable = 0;
+
         LOGV("Repeat Count %d", current_stream->repeat_count);
         sf_seek(current_stream->snd_file, 0, SEEK_SET);
         if (current_stream->repeat_count > 0)
           current_stream->repeat_count--;
         pa_usec_t usec;
         pa_stream_get_time(stream, &current_stream->start_usec);
-        LOGD("update start_usec to %f", current_stream->start_usec);
+
         pa_stream_set_write_callback(stream, PlaybackStream::stream_data_callback, current_stream);
-        PlaybackStream::stream_data_callback(stream, 1024, current_stream);
+        writable = pa_stream_writable_size(stream);
+        PlaybackStream::stream_data_callback(stream, writable, current_stream);
         pa_stream_trigger(stream, NULL, NULL);
       }
     });
@@ -79,13 +82,15 @@ PlaybackStream::PlaybackStream(string filepath, std::shared_ptr<pa_sample_spec> 
 int PlaybackStream::start_stream()
 {
   pa_buffer_attr buffer_attr;
-  pa_stream_flags_t flags;
+  pa_stream_flags_t flags =
+      static_cast<pa_stream_flags_t>(PA_STREAM_NOFLAGS | PA_STREAM_EARLY_REQUESTS);
   pa_cvolume volume;
 
   LOGD("enter");
 
   if (get_stream_handle() == nullptr || get_stream_state() == PA_STREAM_READY) {
-    LOGE("stream handle(%p) state(%d) error, start fail", get_stream_handle(), get_stream_state());
+    LOGE("stream handle(%p) state(%d) error, start fail", static_cast<void *>(get_stream_handle()),
+        get_stream_state());
     return -EPERM;
   }
 
@@ -111,19 +116,18 @@ int PlaybackStream::start_stream()
 
 int PlaybackStream::sndfile_open()
 {
-  int fd;
   SF_INFO snd_file_info;
   int sf_errno;
   pa_channel_map channel_map;
   bool match_format = false;
 
   LOGI("opening %s", m_file_path.c_str());
-  if ((fd = open(m_file_path.c_str(), O_RDONLY, 0666)) < 0) {
-    LOGE("open %s failed", m_file_path);
+  if ((file_fd = open(m_file_path.c_str(), O_RDONLY, 0666)) < 0) {
+    LOGE("open %s failed", m_file_path.c_str());
     return -ENOENT;
   }
 
-  snd_file = sf_open_fd(fd, SFM_READ, &snd_file_info, 0);
+  snd_file = sf_open_fd(file_fd, SFM_READ, &snd_file_info, 0);
   if (snd_file == nullptr) {
     LOGE("snd file open failed");
     return -SF_ERR_MALFORMED_FILE;
@@ -186,7 +190,7 @@ void PlaybackStream::stream_data_callback(pa_stream * stream, size_t length, voi
   for (;;) {
     bytes_written = length;
     if ((pa_stream_begin_write(stream, &buf_pulse, &bytes_written)) < 0) {
-      LOGE("%s:pa_stream_begin_write failed(%s)", pa_strerror(pa_context_errno(pulse_context_)));
+      LOGE("pa_stream_begin_write failed(%s)", pa_strerror(pa_context_errno(pulse_context_)));
       current_stream->internal_stopstream();
     }
 

@@ -46,14 +46,15 @@ CaptureStream::CaptureStream(string filepath, std::shared_ptr<pa_sample_spec> sa
 int CaptureStream::start_stream()
 {
   pa_buffer_attr buffer_attr;
-  pa_stream_flags_t flags;
+  pa_stream_flags_t flags = PA_STREAM_NOFLAGS;
   pa_cvolume volume;
   pa_stream * stream = get_stream_handle();
 
   LOGD("enter");
 
   if (stream == nullptr || get_stream_state() != PA_STREAM_UNCONNECTED) {
-    LOGE("stream handle(%p) state(%d) error, start fail", stream, get_stream_state());
+    LOGE("stream handle(%p) state(%d) error, start fail", static_cast<void *>(stream),
+        get_stream_state());
     return -EPERM;
   }
 
@@ -87,7 +88,6 @@ int CaptureStream::start_stream()
 
 int CaptureStream::sndfile_open()
 {
-  int fd;
   SF_INFO snd_file_info;
   bool match_format = false;
 
@@ -111,12 +111,12 @@ int CaptureStream::sndfile_open()
   snd_file_info.format |= SF_FORMAT_WAV;
 
   LOGI("opening %s", m_file_path.c_str());
-  if ((fd = open(m_file_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0) {
-    LOGE("open %s failed", m_file_path);
+  if ((file_fd = open(m_file_path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0) {
+    LOGE("open %s failed", m_file_path.c_str());
     return -ENOMEM;
   }
 
-  snd_file = sf_open_fd(fd, SFM_WRITE, &snd_file_info, 0);
+  snd_file = sf_open_fd(file_fd, SFM_WRITE, &snd_file_info, 0);
   if (snd_file == nullptr) {
     LOGE("snd file open failed");
     return -SF_ERR_MALFORMED_FILE;

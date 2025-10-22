@@ -1,3 +1,10 @@
+qrb-audio-common-lib (1.0.1) noble; urgency=medium
+
+  * Fix 7.1 channel playback failure.
+  * Fix repeat not work.
+
+ -- Ronghui Zhu <ronghuiz@qti.qualcomm.com>  Wed, 22 Oct 2025 17:30:04 -0000
+
 qrb-audio-common-lib (1.0.0) noble; urgency=medium
 
   * First release for Debian package.
