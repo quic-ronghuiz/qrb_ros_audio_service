@@ -99,7 +99,7 @@ size_t audio_stream_write(uint32_t stream_handle, size_t length, void * buf)
     for (;;) {
       bytes_written = length;
       if (pa_stream_begin_write(pulse_stream, &pulse_buf, &bytes_written) < 0) {
-        LOGE("failed to pa_stream_begin_write, length %d", length);
+        LOGE("failed to pa_stream_begin_write, length %ld", length);
         return -EIO;
       }
       if (bytes_written > 0) {
