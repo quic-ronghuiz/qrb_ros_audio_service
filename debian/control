@@ -8,5 +8,5 @@ Standards-Version: 3.9.2
 
 Package: ros-jazzy-qrb-ros-audio-service
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ros-jazzy-rclcpp, ros-jazzy-rclcpp-action, ros-jazzy-rclcpp-components, qrb-audio-manager, ros-jazzy-qrb-ros-audio-common-msgs, ros-jazzy-qrb-ros-audio-service-msgs
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-jazzy-rclcpp, ros-jazzy-rclcpp-action, ros-jazzy-rclcpp-components, qrb-audio-manager, ros-jazzy-qrb-ros-audio-common-msgs, ros-jazzy-qrb-ros-audio-service-msgs, ros-jazzy-qrb-ros-audio-common
 Description: QRB ROS Audio Service

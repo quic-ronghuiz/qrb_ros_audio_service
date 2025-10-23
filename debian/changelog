@@ -1,3 +1,10 @@
+ros-jazzy-qrb-ros-audio-service (1.0.1) noble; urgency=medium
+
+  * Fix 7.1 channel playback failure.
+  * Fix repeat not work.
+
+ -- Ronghui Zhu <ronghuiz@qti.qualcomm.com>  Wed, 22 Oct 2025 17:30:04 -0000
+
 ros-jazzy-qrb-ros-audio-service (1.0.0) noble; urgency=high
 
   * Initial release of QRB ROS Audio Service package
