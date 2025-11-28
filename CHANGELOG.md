@@ -23,5 +23,5 @@
 
 ## 1.0.3 (2025-11-28)
 
-- Correct the version.
+- Update "Build from Source"
 - Contributors👉 Yuchao Pan
