@@ -25,3 +25,15 @@
 
 - Update "Build from Source"
 - Contributors👉 Yuchao Pan
+
+## 1.0.4 (2026-6-10)
+
+- Add log to print latency.
+- Set pulseaudio record stream fragsize to 20 ms.
+- Contributors👉 Ronghui Zhu
+
+## 2.0.0 (2026-8-14)
+
+- Merge qrb_ros_audio_common into qrb_ros_audio_service.
+- Add alsa backend support.
+- Contributors👉 Ronghui Zhu

@@ -1,17 +1,19 @@
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #define LOG_TAG "AudioManager"
 
 // clang-format off
-#include <string>
-#include <random>
-#include <sstream>
 #include <dirent.h>
 #include <sys/types.h>
 
-#include "qrb_audio_manager/stream.hpp"
+#include <random>
+#include <sstream>
+#include <string>
+
+#include "qrb_audio_common_lib/audio_common_wrapper.hpp"
 #include "qrb_audio_manager/audio_manager.hpp"
+#include "qrb_audio_manager/stream.hpp"
 // clang-format on
 
 #define BUILDIN_SOUNDS_PATH "/opt/qcom/qirp-sdk/usr/share/qrb-audio-manager/sounds"
@@ -41,15 +43,111 @@ std::map<std::string, AudioManagerPlayMode> audio_manager_play_mode {
 // clang-format on
 
 AudioManager * AudioManager::instance_ = nullptr;
+stream_data_cb_t AudioManager::stream_data_cb_ = nullptr;
+
+static stream_data_cb_t g_stream_data_cb = nullptr;
+
+static bool audio_common_stream_cb(const void * const payload,
+    StreamCommand cmd,
+    uint32_t & ac_handle)
+{
+  using namespace qrb::audio_common_lib;
+  const StreamConfigs * configs = static_cast<const StreamConfigs *>(payload);
+  uint32_t am_handle = configs->stream_handle;
+
+  switch (cmd) {
+    case StreamCommand::OPEN: {
+      AudioStreamInfo info;
+      info.rate = configs->sample_rate;
+      info.channels = configs->channels;
+      info.format = configs->sample_format;
+      info.volume = configs->volume;
+      info.repeat = configs->repeat;
+
+      if (configs->type == StreamType::PLAYBACK) {
+        info.type = qrb::audio_common_lib::StreamType::Playback;
+        info.file_path = configs->source;
+        if (!configs->subs_name.empty())
+          info.pcm_mode = true;
+      } else {
+        info.type = qrb::audio_common_lib::StreamType::Capture;
+        info.file_path = configs->source;
+        if (configs->pub_pcm || !configs->pub_name.empty())
+          info.pcm_mode = true;
+      }
+
+      auto event_cb = [am_handle](StreamEvent event, StreamEventData data, void * userdata) {
+        uint32_t handle = static_cast<uint32_t>(reinterpret_cast<intptr_t>(userdata));
+        std::string cmd_str;
+        bool result = true;
+        switch (event) {
+          case StreamEvent::StreamStart:
+            cmd_str = audio_stream_cmd_name[StreamCommand::START];
+            break;
+          case StreamEvent::StreamStoped:
+            cmd_str = audio_stream_cmd_name[StreamCommand::STOP];
+            break;
+          case StreamEvent::StreamAbort:
+            cmd_str = audio_stream_cmd_name[StreamCommand::STOP];
+            result = false;
+            break;
+          case StreamEvent::StreamEos:
+            cmd_str = audio_stream_cmd_name[StreamCommand::EOS];
+            break;
+          case StreamEvent::StreamData:
+            if (g_stream_data_cb) {
+              g_stream_data_cb(am_handle, reinterpret_cast<const void *>(data.data.data_ptr),
+                  data.data.data_size);
+            }
+            return;
+          default:
+            return;
+        }
+        AudioManager::on_task_completed(DOMAIN_ID_AUDIO_COMMON, am_handle, handle, cmd_str, result);
+      };
+
+      ac_handle = audio_stream_open(info, event_cb);
+      return ac_handle != 0;
+    }
+    case StreamCommand::START:
+      return audio_stream_start(ac_handle) == 0;
+    case StreamCommand::STOP:
+      return audio_stream_stop(ac_handle) == 0;
+    case StreamCommand::CLOSE:
+      return audio_stream_close(ac_handle) == 0;
+    case StreamCommand::MUTE:
+      return audio_stream_mute(ac_handle, configs->mute) == 0;
+    default:
+      return false;
+  }
+}
 
 AudioManager * AudioManager::get_instance()
 {
   if (instance_ == nullptr) {
     instance_ = new AudioManager();
     instance_->load_buildin_sounds(BUILDIN_SOUNDS_PATH);
+    qrb::audio_common_lib::detect_audio_backend();
+    Stream::register_callback(DOMAIN_ID_AUDIO_COMMON, audio_common_stream_cb, false);
   }
-
   return instance_;
+}
+
+void AudioManager::set_stream_data_callback(stream_data_cb_t cb)
+{
+  stream_data_cb_ = cb;
+  g_stream_data_cb = cb;
+}
+
+bool AudioManager::write_stream(uint32_t stream_handle, const void * data, size_t size)
+{
+  using namespace qrb::audio_common_lib;
+  auto stream = find_stream(stream_handle);
+  if (!stream)
+    return false;
+
+  uint32_t ac_handle = stream->get_domain_handle(DOMAIN_ID_AUDIO_COMMON);
+  return audio_stream_write(ac_handle, data, size) >= 0;
 }
 
 uint32_t AudioManager::create_playback_stream(std::string source,
@@ -85,10 +183,11 @@ uint32_t AudioManager::create_playback_stream(std::string source,
                        << (std::ostringstream() << std::hex << stream_handle).str() << " success");
 
   try {
-    if (!stream_ptr->get_domain_async_mode(DOMAIN_ID_AUDIO_COMMON))
+    if (!stream_ptr->get_domain_async_mode(DOMAIN_ID_AUDIO_COMMON)) {
       on_task_completed(DOMAIN_ID_AUDIO_COMMON, stream_handle,
           stream_ptr->get_domain_handle(DOMAIN_ID_AUDIO_COMMON),
           audio_stream_cmd_name[StreamCommand::OPEN], true);
+    }
   } catch (const std::exception & e) {
     AM_LOGE(LOG_TAG, "caught exception: " << e.what());
   }
@@ -119,7 +218,7 @@ uint32_t AudioManager::create_record_stream(uint32_t sample_rate,
 
   streams_[stream_handle] = stream_ptr;
 
-  AM_LOGI(LOG_TAG, "create record streaml, handle 0x" +
+  AM_LOGI(LOG_TAG, "create record stream, handle 0x" +
                        (std::ostringstream() << std::hex << stream_handle).str() + " success");
 
   return stream_handle;
@@ -326,7 +425,7 @@ void AudioManager::on_task_completed(int domain,
 
         if (audio_stream_cmd_name[StreamCommand::OPEN] == cmd)
           msg.command = StreamCommand::START;
-        else if (audio_stream_cmd_name[StreamCommand::START] == cmd)
+        else if (audio_stream_cmd_name[StreamCommand::EOS] == cmd)
           msg.command = StreamCommand::STOP;
         else if (audio_stream_cmd_name[StreamCommand::STOP] == cmd)
           msg.command = StreamCommand::CLOSE;

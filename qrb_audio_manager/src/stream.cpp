@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 #define LOG_TAG "Stream"
@@ -25,7 +25,8 @@ std::map<StreamCommand, std::string> audio_stream_cmd_name {
   { StreamCommand::START, "start" },
   { StreamCommand::STOP, "stop" },
   { StreamCommand::CLOSE, "close" },
-  { StreamCommand::MUTE, "mute" }
+  { StreamCommand::MUTE, "mute" },
+  { StreamCommand::EOS, "eos" }
 };
 // clang-format on
 

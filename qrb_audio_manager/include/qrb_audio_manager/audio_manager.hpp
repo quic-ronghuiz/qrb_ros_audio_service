@@ -1,9 +1,10 @@
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-#ifndef QRB_AUDIO_MANAGER__INTERFACE_HPP_
-#define QRB_AUDIO_MANAGER__INTERFACE_HPP_
+#ifndef QRB_AUDIO_MANAGER__AUDIO_MANAGER_HPP_
+#define QRB_AUDIO_MANAGER__AUDIO_MANAGER_HPP_
 
+#include <functional>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -40,6 +41,7 @@ public:
   virtual bool stop_stream(uint32_t stream_handle) = 0;
   virtual bool release_stream(uint32_t stream_handle) = 0;
   virtual bool mute_stream(uint32_t stream_handle, bool mute) = 0;
+  virtual bool write_stream(uint32_t stream_handle, const void * data, size_t size) = 0;
   virtual const std::map<std::string, std::string> & get_buildin_sounds() = 0;
   virtual void clean() = 0;
 };
@@ -65,6 +67,8 @@ extern std::map<std::string, AudioManagerCommand> audio_manager_cmd_name;
 
 extern std::map<std::string, AudioManagerPlayMode> audio_manager_play_mode;
 
+using stream_data_cb_t = std::function<void(uint32_t, const void *, size_t)>;
+
 class AudioManager : public IAudioManager
 {
 public:
@@ -89,7 +93,9 @@ public:
   bool stop_stream(uint32_t stream_handle) override;
   bool release_stream(uint32_t stream_handle) override;
   bool mute_stream(uint32_t stream_handle, bool mute) override;
+  bool write_stream(uint32_t stream_handle, const void * data, size_t size) override;
   const std::map<std::string, std::string> & get_buildin_sounds() override;
+  static void set_stream_data_callback(stream_data_cb_t cb);
   static void on_task_completed(int domain,
       uint32_t stream_handle,
       uint32_t audio_domain_handle,
@@ -106,6 +112,7 @@ private:
       worker_.join();
   }
   static AudioManager * instance_;
+  static stream_data_cb_t stream_data_cb_;
   std::unordered_map<uint32_t, std::shared_ptr<Stream>> streams_{};
   std::map<std::string, std::string> buildin_sounds_{};
   MessageQueue queue_;
@@ -119,4 +126,4 @@ private:
 }  // namespace audio_manager
 }  // namespace qrb
 
-#endif  // QRB_AUDIO_MANAGER__INTERFACE_HPP_
+#endif  // QRB_AUDIO_MANAGER__AUDIO_MANAGER_HPP_

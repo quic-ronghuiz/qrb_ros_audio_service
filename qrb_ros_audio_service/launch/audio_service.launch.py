@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 # SPDX-License-Identifier: BSD-3-Clause-Clear
 
 from launch import LaunchDescription
@@ -16,12 +16,6 @@ def generate_launch_description():
             ComposableNode(
                 package='qrb_ros_audio_service',
                 plugin='qrb_ros::audio_service::AudioServer',
-                extra_arguments=[{'use_intra_process_comms': True}],
-            ),
-            ComposableNode(
-                package='qrb_ros_audio_service',
-                plugin='qrb_ros::audio_service::AudioCommonClient',
-                parameters=[{'use_async': False}],
                 extra_arguments=[{'use_intra_process_comms': True}],
             ),
         ]

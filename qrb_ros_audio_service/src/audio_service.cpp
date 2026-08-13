@@ -1,8 +1,11 @@
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
 // clang-format off
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
+#include <cstring>
 
 #include "qrb_ros_audio_service/audio_service.hpp"
 #include "qrb_audio_manager/audio_manager.hpp"
@@ -26,8 +29,6 @@ AudioServer::AudioServer(const rclcpp::NodeOptions & options)
   : Node(AUDIO_SERVER_NAME_NODE_NAME, options)
 {
   callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
-  rclcpp::SubscriptionOptions sub_options;
-  sub_options.callback_group = callback_group_;
 
   server_ = this->create_service<AudioService>(AUDIO_SERVER_NAME,
       std::bind(&AudioServer::service_callback, this, _1, _2, _3), rmw_qos_profile_services_default,
@@ -35,7 +36,135 @@ AudioServer::AudioServer(const rclcpp::NodeOptions & options)
 
   AudioManager::get_instance();
 
+  AudioManager::set_stream_data_callback(std::bind(&AudioServer::on_stream_data, this, _1, _2, _3));
+
+  latency_log_enabled_ = this->declare_parameter<bool>("enable_latency_log", false);
+
+  param_callback_handle_ =
+      this->add_on_set_parameters_callback([this](const std::vector<rclcpp::Parameter> & params) {
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        for (const auto & param : params) {
+          if (param.get_name() == "enable_latency_log") {
+            latency_log_enabled_ = param.as_bool();
+            RCLCPP_INFO(this->get_logger(), "enable_latency_log set to %s",
+                latency_log_enabled_ ? "true" : "false");
+          }
+        }
+        return result;
+      });
+
+  latency_log_timer_ = this->create_wall_timer(
+      std::chrono::seconds(1), std::bind(&AudioServer::on_latency_log_timer, this));
+
   rclcpp::on_shutdown(std::bind(&AudioServer::shutdown_callback, this));
+}
+
+void AudioServer::on_stream_data(uint32_t am_handle, const void * data, size_t size)
+{
+  bool log_enabled = latency_log_enabled_.load();
+  std::chrono::steady_clock::time_point t1;
+  if (log_enabled)
+    t1 = std::chrono::steady_clock::now();
+
+  auto it = capture_pubs_.find(am_handle);
+  if (it == capture_pubs_.end())
+    return;
+
+  AudioData msg;
+  msg.stream_handle = am_handle;
+  msg.data.assign(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + size);
+  it->second->publish(msg);
+
+  if (log_enabled) {
+    auto t2 = std::chrono::steady_clock::now();
+    uint64_t latency_usec = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    update_latency_stats(capture_latency_stats_, am_handle, latency_usec);
+  }
+}
+
+void AudioServer::on_audio_data(uint32_t am_handle,
+    const qrb_ros_audio_service_msgs::msg::AudioData::SharedPtr msg)
+{
+  if (msg->data.empty())
+    return;
+
+  bool log_enabled = latency_log_enabled_.load();
+  std::chrono::steady_clock::time_point t3;
+  if (log_enabled)
+    t3 = std::chrono::steady_clock::now();
+
+  AudioManager::get_instance()->write_stream(am_handle, msg->data.data(), msg->data.size());
+
+  if (log_enabled) {
+    auto t4 = std::chrono::steady_clock::now();
+    uint64_t latency_usec = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
+    update_latency_stats(playback_latency_stats_, am_handle, latency_usec);
+  }
+}
+
+void AudioServer::update_latency_stats(std::unordered_map<uint32_t, LatencyStats> & stats_map,
+    uint32_t handle,
+    uint64_t latency_usec)
+{
+  std::lock_guard<std::mutex> lock(latency_stats_mutex_);
+  auto & stats = stats_map[handle];
+  stats.count++;
+  stats.sum_usec += latency_usec;
+  stats.max_usec = std::max(stats.max_usec, latency_usec);
+  stats.min_usec = std::min(stats.min_usec, latency_usec);
+}
+
+void AudioServer::on_latency_log_timer()
+{
+  if (!latency_log_enabled_.load())
+    return;
+
+  std::lock_guard<std::mutex> lock(latency_stats_mutex_);
+
+  for (auto & [handle, stats] : capture_latency_stats_) {
+    if (stats.count == 0)
+      continue;
+    RCLCPP_INFO(this->get_logger(),
+        "[latency][capture] handle=0x%x avg=%luus min=%luus max=%luus count=%lu", handle,
+        stats.sum_usec / stats.count, stats.min_usec, stats.max_usec, stats.count);
+  }
+  capture_latency_stats_.clear();
+
+  for (auto & [handle, stats] : playback_latency_stats_) {
+    if (stats.count == 0)
+      continue;
+    RCLCPP_INFO(this->get_logger(),
+        "[latency][playback] handle=0x%x avg=%luus min=%luus max=%luus count=%lu", handle,
+        stats.sum_usec / stats.count, stats.min_usec, stats.max_usec, stats.count);
+  }
+  playback_latency_stats_.clear();
+}
+
+void AudioServer::create_pcm_topic(uint32_t stream_handle,
+    const std::string & topic_name,
+    bool is_capture)
+{
+  if (is_capture) {
+    rclcpp::PublisherOptions pub_options;
+    pub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+    capture_pubs_[stream_handle] = this->create_publisher<AudioData>(topic_name, 10, pub_options);
+  } else {
+    rclcpp::SubscriptionOptions sub_options;
+    sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+    playback_subs_[stream_handle] = this->create_subscription<AudioData>(
+        topic_name, 10,
+        [this, stream_handle](const qrb_ros_audio_service_msgs::msg::AudioData::SharedPtr msg) {
+          on_audio_data(stream_handle, msg);
+        },
+        sub_options);
+  }
+}
+
+void AudioServer::delete_pcm_topic(uint32_t stream_handle)
+{
+  capture_pubs_.erase(stream_handle);
+  playback_subs_.erase(stream_handle);
 }
 
 void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> request_header,
@@ -51,7 +180,6 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
   auto channels = request->audio_info.channels;
   auto sample_rate = request->audio_info.sample_rate;
   auto sample_format = request->audio_info.sample_format;
-  auto bitrate = request->audio_info.bitrate;
   auto coding_format = request->audio_info.coding_format;
 
   auto command = request->command;
@@ -78,7 +206,7 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
     case static_cast<int>(AudioManagerCommand::CREATE):
       if ((type == "playback") || (play_mode == "one-touch")) {
         RCLCPP_INFO(this->get_logger(),
-            "source %s, coding_format %s, volume %d, play_mode %s, repate %d topic_name %s",
+            "source %s, coding_format %s, volume %d, play_mode %s, repeat %d topic_name %s",
             source.c_str(), coding_format.c_str(), volume, play_mode.c_str(), repeat,
             topic_name.c_str());
         if (!source.empty() && !topic_name.empty()) {
@@ -90,6 +218,8 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
             stream_handle_by_create = am->create_playback_stream(source, sample_rate, channels,
                 sample_format, coding_format, volume, play_mode, repeat, topic_name);
             ret = true;
+            if (!topic_name.empty())
+              create_pcm_topic(stream_handle_by_create, topic_name, false);
           } catch (const std::exception & e) {
             RCLCPP_ERROR(this->get_logger(), "%s", e.what());
           }
@@ -106,6 +236,8 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
             stream_handle_by_create = am->create_record_stream(
                 sample_rate, channels, sample_format, coding_format, source, pub_pcm, topic_name);
             ret = true;
+            if (pub_pcm || !topic_name.empty())
+              create_pcm_topic(stream_handle_by_create, topic_name, true);
           } catch (const std::exception & e) {
             RCLCPP_ERROR(this->get_logger(), "%s", e.what());
           }
@@ -124,6 +256,7 @@ void AudioServer::service_callback(const std::shared_ptr<rmw_request_id_t> reque
       break;
     case static_cast<int>(AudioManagerCommand::RELEASE):
       ret = am->release_stream(stream_handle_req);
+      delete_pcm_topic(stream_handle_req);
       break;
     case static_cast<int>(AudioManagerCommand::GETBUILDINSOUND):
       for (const auto & pair : am->get_buildin_sounds())

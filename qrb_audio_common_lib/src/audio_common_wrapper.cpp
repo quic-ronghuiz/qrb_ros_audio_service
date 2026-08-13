@@ -1,122 +1,164 @@
-// Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 
-#include "qrb_audio_common_lib/audio_common_wrapper.hpp"
-
-#include <fcntl.h>
-#include <string.h>
-#include <sys/mman.h>
 #include <unistd.h>
 
-#include <set>
+#include <cerrno>
+#include <cstdlib>
 #include <stdexcept>
+#include <string>
 
-#include "stdio.h"
+#include "qrb_audio_common_lib/alsa_stream.hpp"
+#include "qrb_audio_common_lib/audio_stream.hpp"
+#include "qrb_audio_common_lib/pulse_stream.hpp"
 
 namespace qrb
 {
 namespace audio_common_lib
 {
 
-uint32_t audio_stream_open(const audio_stream_info & stream_info,
+static AudioBackend g_backend = AudioBackend::ALSA;
+static std::string g_alsa_playback_device;
+static std::string g_alsa_capture_device;
+
+static bool is_pulseaudio_available()
+{
+  const char * runtime_dir = getenv("XDG_RUNTIME_DIR");
+  bool result = false;
+
+  if (runtime_dir) {
+    std::string path = std::string(runtime_dir) + "/pulse/native";
+    if (access(path.c_str(), F_OK) == 0) {
+      result = true;
+    }
+  }
+
+  if (result == false) {
+    uid_t uid = getuid();
+    std::string path = "/run/user/" + std::to_string(uid) + "/pulse/native";
+    if (access(path.c_str(), F_OK) == 0)
+      result = true;
+  }
+
+  if (result == false) {
+    if (access("/run/pulse/native", F_OK) == 0)
+      result = true;
+  }
+
+  return result;
+}
+
+AudioBackend detect_audio_backend()
+{
+  if (is_pulseaudio_available()) {
+    g_backend = AudioBackend::PULSEAUDIO;
+    LOGI("Audio backend: PulseAudio");
+    return g_backend;
+  }
+  LOGI("PulseAudio unavailable, checking ALSA...");
+
+  if (AlsaCommonStream::detect_alsa_available(g_alsa_playback_device, g_alsa_capture_device)) {
+    g_backend = AudioBackend::ALSA;
+    LOGI("Audio backend: ALSA (playback='%s', capture='%s')", g_alsa_playback_device.c_str(),
+        g_alsa_capture_device.c_str());
+    return g_backend;
+  }
+
+  LOGE("No audio backend detected");
+  g_backend = AudioBackend::INVALID;
+  return g_backend;
+}
+
+uint32_t audio_stream_open(const AudioStreamInfo & stream_info,
     stream_event_callback_func event_callback)
 {
-  uint32_t stream_handle = 0;
-  stream_handle = (CommonAudioStream::audio_stream_open(stream_info, event_callback));
-  return stream_handle;
+  if (g_backend == AudioBackend::ALSA) {
+    AudioStreamInfo info = stream_info;
+    if (info.device.empty()) {
+      if (info.type == StreamType::Playback && !g_alsa_playback_device.empty()) {
+        info.device = g_alsa_playback_device;
+      } else if (info.type == StreamType::Capture && !g_alsa_capture_device.empty()) {
+        info.device = g_alsa_capture_device;
+      }
+    }
+    return AlsaCommonStream::audio_stream_open(info, event_callback);
+  } else if (g_backend == AudioBackend::PULSEAUDIO) {
+    return PulseCommonStream::audio_stream_open(stream_info, event_callback);
+  } else {
+    throw std::runtime_error("No supported backend is available");
+  }
 }
 
 int audio_stream_start(uint32_t stream_handle)
 {
-  CommonAudioStream * current_stream = CommonAudioStream::get_stream(stream_handle);
-
-  if (current_stream != nullptr)
-    return current_stream->start_stream();
-  else {
-    LOGE("Invailed stream_handle");
+  if (stream_handle == 0) {
+    LOGE("audio_stream_start: Invalid stream_handle");
+    return -EIO;
   }
-
-  return -EIO;
+  IAudioStream * stream = IAudioStream::get_stream(stream_handle);
+  if (!stream) {
+    LOGE("audio_stream_start: Invalid stream");
+    return -EIO;
+  }
+  return stream->start_stream();
 }
 
 int audio_stream_mute(uint32_t stream_handle, bool mute)
 {
-  if (stream_handle != 0) {
-    CommonAudioStream * current_stream = CommonAudioStream::get_stream(stream_handle);
-    if (current_stream != nullptr)
-      return current_stream->mute_stream(mute);
-  } else {
-    LOGE("Invailed stream_handle");
+  if (stream_handle == 0) {
+    LOGE("audio_stream_mute: Invalid stream_handle");
+    return -EIO;
   }
-
-  return -EIO;
+  IAudioStream * stream = IAudioStream::get_stream(stream_handle);
+  if (!stream) {
+    LOGE("audio_stream_mute: Invalid stream");
+    return -EIO;
+  }
+  return stream->mute_stream(mute);
 }
 
 int audio_stream_stop(uint32_t stream_handle)
 {
-  if (stream_handle != 0) {
-    CommonAudioStream * current_stream = CommonAudioStream::get_stream(stream_handle);
-    if (current_stream != nullptr)
-      return current_stream->stop_stream();
-  } else {
-    LOGE("Invailed stream_handle");
+  if (stream_handle == 0) {
+    LOGE("audio_stream_stop: Invalid stream_handle");
+    return -EIO;
   }
-
-  return -EIO;
+  IAudioStream * stream = IAudioStream::get_stream(stream_handle);
+  if (!stream) {
+    LOGE("audio_stream_stop: Invalid stream");
+    return -EIO;
+  }
+  return stream->stop_stream();
 }
 
 int audio_stream_close(uint32_t stream_handle)
 {
-  if (stream_handle != 0) {
-    CommonAudioStream * current_stream = CommonAudioStream::get_stream(stream_handle);
-    int ret = current_stream->close_stream();
-    if (!ret) {
-      if (current_stream != nullptr)
-        delete current_stream;
-      return 0;
-    }
-  } else {
-    LOGE("Invailed stream_handle");
-  }
-  return -EIO;
-}
-
-size_t audio_stream_write(uint32_t stream_handle, size_t length, void * buf)
-{
   if (stream_handle == 0) {
-    LOGE("Invailed stream_handle");
+    LOGE("audio_stream_close: Invalid stream_handle");
     return -EIO;
   }
-
-  CommonAudioStream * current_stream = CommonAudioStream::get_stream(stream_handle);
-  pa_stream * pulse_stream = (pa_stream *)(current_stream->get_stream_handle());
-
-  void * pulse_buf;
-  size_t bytes_written;
-  size_t bytes_total_written = 0;
-
-  if (current_stream->get_stream_state() == PA_STREAM_READY) {
-    for (;;) {
-      bytes_written = length;
-      if (pa_stream_begin_write(pulse_stream, &pulse_buf, &bytes_written) < 0) {
-        LOGE("failed to pa_stream_begin_write, length %ld", length);
-        return -EIO;
-      }
-      if (bytes_written > 0) {
-        memcpy(pulse_buf, buf, bytes_written);
-        pa_stream_write(pulse_stream, pulse_buf, bytes_written, nullptr, 0, PA_SEEK_RELATIVE);
-      }
-      if (bytes_written >= length)
-        break;
-      buf += bytes_written;
-      length -= bytes_written;
-      bytes_total_written += bytes_written;
-    }
-  } else {
-    LOGE("stream not start");
+  IAudioStream * stream = IAudioStream::get_stream(stream_handle);
+  if (!stream) {
+    LOGE("audio_stream_close: Invalid stream");
+    return -EIO;
   }
+  int ret = stream->close_stream();
+  delete stream;  // ~IAudioStream() calls unregister_stream()
+  return ret;
+}
 
-  return bytes_total_written;
+int audio_stream_write(uint32_t stream_handle, const void * buf, size_t length)
+{
+  if (stream_handle == 0) {
+    LOGE("audio_stream_write: Invalid stream_handle");
+    return -EIO;
+  }
+  IAudioStream * stream = IAudioStream::get_stream(stream_handle);
+  if (!stream) {
+    LOGE("audio_stream_write: Invalid stream");
+    return -EIO;
+  }
+  return stream->write_data(buf, length);
 }
 
 }  // namespace audio_common_lib
