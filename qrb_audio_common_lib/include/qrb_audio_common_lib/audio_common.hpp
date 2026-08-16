@@ -79,6 +79,7 @@ enum class StreamEvent
   StreamAbort,
   StreamTimestamp,
   StreamData,
+  StreamDataReady,
 };
 
 union Stream_Event_Data

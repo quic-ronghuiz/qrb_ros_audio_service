@@ -146,6 +146,12 @@ void CaptureStream::stream_data_callback(pa_stream * stream, size_t length, void
 
   CaptureStream * current_stream = static_cast<CaptureStream *>(userdata);
 
+  if (current_stream->pcm_mode_) {
+    Stream_Event_Data dummy_data{};
+    uint32_t stream_handle = get_common_stream_handle(current_stream);
+    current_stream->event_cb(StreamEvent::StreamDataReady, dummy_data, (void *)stream_handle);
+  }
+
   while (pa_stream_readable_size(stream) > 0) {
     sf_count_t bytes;
     const void * data;
