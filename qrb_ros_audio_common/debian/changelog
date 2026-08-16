@@ -1,3 +1,10 @@
+ros-jazzy-qrb-ros-audio-common (1.0.4) noble; urgency=medium
+
+  * Add log to print latency.
+  * Set pulseaudio record stream fragsize to 20 ms.
+
+ -- Ronghui Zhu <ronghuiz@qti.qualcomm.com>  Sun, 16 Aug 2026 23:27:57 -0000
+
 ros-jazzy-qrb-ros-audio-common (1.0.3) noble; urgency=medium
 
   * Fix build failure caused by missing dependencies.
