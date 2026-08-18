@@ -25,3 +25,9 @@
 
 - Rebase from debian branches.
 - Contributors👉 Yuchao Pan
+
+## 1.0.4 (2026-6-10)
+
+- Add log to print latency.
+- Set pulseaudio record stream fragsize to 20 ms.
+- Contributors👉 Ronghui Zhu

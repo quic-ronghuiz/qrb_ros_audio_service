@@ -11,6 +11,8 @@
 #include "qrb_audio_common_lib/audio_common.hpp"
 #include "stdio.h"
 
+#define CAPTURE_FRAGMENT_DURATION_MS 20
+
 namespace qrb
 {
 namespace audio_common_lib
@@ -59,9 +61,10 @@ int CaptureStream::start_stream()
   }
 
   buffer_attr.maxlength = (uint32_t)-1;
+  buffer_attr.fragsize =
+      pa_usec_to_bytes(CAPTURE_FRAGMENT_DURATION_MS * PA_USEC_PER_MSEC, m_sample_spec.get());
   buffer_attr.prebuf = (uint32_t)-1;
-
-  buffer_attr.fragsize = buffer_attr.tlength = (uint32_t)-1;
+  buffer_attr.tlength = (uint32_t)-1;
   buffer_attr.minreq = (uint32_t)-1;
 
   pa_cvolume_set(&volume, m_sample_spec->channels, PA_VOLUME_NORM * mvolume / STREAM_VOL_MAX);
