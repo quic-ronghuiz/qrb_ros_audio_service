@@ -9,12 +9,16 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <rclcpp/rclcpp.hpp>
 #include <thread>
+#include <unordered_map>
 
 #include "qrb_audio_common_lib/audio_common.hpp"
 #include "qrb_audio_common_lib/audio_common_wrapper.hpp"
@@ -32,6 +36,14 @@ namespace audio_common
 
 using Stream_Action = qrb_ros_audio_common_msgs::action::AudioCommon;
 using GoalHandleStream = rclcpp_action::ServerGoalHandle<Stream_Action>;
+
+struct LatencyStats
+{
+  uint64_t count = 0;
+  uint64_t sum_usec = 0;
+  uint64_t max_usec = 0;
+  uint64_t min_usec = UINT64_MAX;
+};
 
 struct Stream_Event
 {
@@ -60,6 +72,10 @@ private:
   void on_audio_data(const qrb_ros_audio_common_msgs::msg::AudioData::SharedPtr msg);
   void create_topic();
   void delete_topic();
+  void update_latency_stats(std::unordered_map<uint32_t, LatencyStats> & stats_map,
+      uint32_t handle,
+      uint64_t latency_usec);
+  void on_latency_log_timer();
 
   rclcpp_action::Server<Stream_Action>::SharedPtr stream_action_ = nullptr;
 
@@ -80,6 +96,14 @@ private:
       nullptr;
   rclcpp::Publisher<qrb_ros_audio_common_msgs::msg::AudioData>::SharedPtr audio_data_pub_ = nullptr;
   rclcpp::CallbackGroup::SharedPtr callback_group_;
+
+  std::unordered_map<uint32_t, LatencyStats> capture_latency_stats_;
+  std::unordered_map<uint32_t, LatencyStats> playback_latency_stats_;
+  std::mutex latency_stats_mutex_;
+  rclcpp::TimerBase::SharedPtr latency_log_timer_;
+  std::atomic<bool> latency_log_enabled_{ false };
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
+  std::chrono::steady_clock::time_point capture_data_ready_time_;
 };
 
 }  // namespace audio_common

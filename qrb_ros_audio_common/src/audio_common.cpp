@@ -3,6 +3,8 @@
 
 #include "qrb_ros_audio_common/audio_common.hpp"
 
+#include <algorithm>
+#include <chrono>
 #include <rclcpp/rclcpp.hpp>
 
 #include "rclcpp_action/rclcpp_action.hpp"
@@ -96,6 +98,25 @@ AudioCommonNode::AudioCommonNode(const rclcpp::NodeOptions & options)
       std::bind(&AudioCommonNode::handle_cancel, this, _1),
       std::bind(&AudioCommonNode::handle_accepted, this, _1),
       rcl_action_server_get_default_options(), callback_group_);
+
+  latency_log_enabled_ = this->declare_parameter<bool>("enable_latency_log", false);
+
+  param_callback_handle_ =
+      this->add_on_set_parameters_callback([this](const std::vector<rclcpp::Parameter> & params) {
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        for (const auto & param : params) {
+          if (param.get_name() == "enable_latency_log") {
+            latency_log_enabled_ = param.as_bool();
+            RCLCPP_INFO(this->get_logger(), "enable_latency_log set to %s",
+                latency_log_enabled_ ? "true" : "false");
+          }
+        }
+        return result;
+      });
+
+  latency_log_timer_ = this->create_wall_timer(
+      std::chrono::seconds(1), std::bind(&AudioCommonNode::on_latency_log_timer, this));
 }
 
 rclcpp_action::GoalResponse AudioCommonNode::handle_goal(const rclcpp_action::GoalUUID & uuid,
@@ -251,8 +272,22 @@ audio_stream_info AudioCommonNode::parse_stream_info(
 
 void AudioCommonNode::on_audio_data(const qrb_ros_audio_common_msgs::msg::AudioData::SharedPtr msg)
 {
-  if (msg->data.size() > 0)
-    audio_stream_write(pcm_stream_handle_, msg->data.size(), &msg->data[0]);
+  if (msg->data.size() == 0)
+    return;
+
+  bool log_enabled = latency_log_enabled_.load();
+  std::chrono::steady_clock::time_point t1;
+  if (log_enabled)
+    t1 = std::chrono::steady_clock::now();
+
+  audio_stream_write(pcm_stream_handle_, msg->data.size(), &msg->data[0]);
+
+  if (log_enabled) {
+    auto t2 = std::chrono::steady_clock::now();
+    uint64_t latency_usec = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    update_latency_stats(
+        playback_latency_stats_, static_cast<uint32_t>(pcm_stream_handle_), latency_usec);
+  }
 }
 
 void AudioCommonNode::stream_monitor(const std::shared_ptr<GoalHandleStream> goal_handle,
@@ -274,13 +309,29 @@ void AudioCommonNode::stream_monitor(const std::shared_ptr<GoalHandleStream> goa
         case StreamEvent::StreamStart:
           current_stream_state_ = event.event;
           break;
+        case StreamEvent::StreamDataReady: {
+          if (latency_log_enabled_.load())
+            capture_data_ready_time_ = std::chrono::steady_clock::now();
+          break;
+        }
         case StreamEvent::StreamData: {
+          bool log_enabled = latency_log_enabled_.load();
+
           qrb_ros_audio_common_msgs::msg::AudioData audio_data_msg;
           audio_data_msg.stream_handle = event.stream_handle;
           audio_data_msg.data.resize(event.s_event_data.data.data_size);
           memcpy(&audio_data_msg.data[0], (void *)event.s_event_data.data.data_ptr,
               event.s_event_data.data.data_size);
           audio_data_pub_->publish(audio_data_msg);
+
+          if (log_enabled) {
+            auto t2 = std::chrono::steady_clock::now();
+            uint64_t latency_usec =
+                std::chrono::duration_cast<std::chrono::microseconds>(t2 - capture_data_ready_time_)
+                    .count();
+            update_latency_stats(
+                capture_latency_stats_, static_cast<uint32_t>(stream_handle), latency_usec);
+          }
           break;
         }
         case StreamEvent::StreamTimestamp:
@@ -318,6 +369,44 @@ void AudioCommonNode::delete_topic()
       audio_data_sub_ = nullptr;
     else if (stream_type_ == StreamCapture)
       audio_data_pub_ = nullptr;
+}
+
+void AudioCommonNode::update_latency_stats(std::unordered_map<uint32_t, LatencyStats> & stats_map,
+    uint32_t handle,
+    uint64_t latency_usec)
+{
+  std::lock_guard<std::mutex> lock(latency_stats_mutex_);
+  auto & stats = stats_map[handle];
+  stats.count++;
+  stats.sum_usec += latency_usec;
+  stats.max_usec = std::max(stats.max_usec, latency_usec);
+  stats.min_usec = std::min(stats.min_usec, latency_usec);
+}
+
+void AudioCommonNode::on_latency_log_timer()
+{
+  if (!latency_log_enabled_.load())
+    return;
+
+  std::lock_guard<std::mutex> lock(latency_stats_mutex_);
+
+  for (auto & [handle, stats] : capture_latency_stats_) {
+    if (stats.count == 0)
+      continue;
+    RCLCPP_INFO(this->get_logger(),
+        "[latency][capture] handle=0x%x avg=%luus min=%luus max=%luus count=%lu", handle,
+        stats.sum_usec / stats.count, stats.min_usec, stats.max_usec, stats.count);
+  }
+  capture_latency_stats_.clear();
+
+  for (auto & [handle, stats] : playback_latency_stats_) {
+    if (stats.count == 0)
+      continue;
+    RCLCPP_INFO(this->get_logger(),
+        "[latency][playback] handle=0x%x avg=%luus min=%luus max=%luus count=%lu", handle,
+        stats.sum_usec / stats.count, stats.min_usec, stats.max_usec, stats.count);
+  }
+  playback_latency_stats_.clear();
 }
 
 }  // namespace audio_common
