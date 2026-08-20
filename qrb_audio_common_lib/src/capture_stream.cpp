@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <functional>
 #include <stdexcept>
 
@@ -149,15 +150,10 @@ void CaptureStream::stream_data_callback(pa_stream * stream, size_t length, void
 
   CaptureStream * current_stream = static_cast<CaptureStream *>(userdata);
 
-  if (current_stream->pcm_mode_) {
-    Stream_Event_Data dummy_data{};
-    uint32_t stream_handle = get_common_stream_handle(current_stream);
-    current_stream->event_cb(StreamEvent::StreamDataReady, dummy_data, (void *)stream_handle);
-  }
-
   while (pa_stream_readable_size(stream) > 0) {
     sf_count_t bytes;
     const void * data;
+    std::chrono::steady_clock::time_point read_start = std::chrono::steady_clock::now();
 
     if (pa_stream_peek(stream, &data, &length) < 0) {
       LOGE("pa_stream_peek() failed(%s)",
@@ -173,8 +169,15 @@ void CaptureStream::stream_data_callback(pa_stream * stream, size_t length, void
       Stream_Event_Data s_event_data;
       uint32_t stream_handle = get_common_stream_handle(current_stream);
 
-      s_event_data.data.data_ptr = (intptr_t)data;
-      s_event_data.data.data_size = length;
+      s_event_data.data_buf =
+          std::make_shared<std::vector<uint8_t>>(static_cast<const uint8_t *>(data),
+              static_cast<const uint8_t *>(data) + length);
+
+      auto read_usec = std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - read_start)
+                            .count();
+      s_event_data.usec = static_cast<uint64_t>(read_usec);
+
       current_stream->event_cb(StreamEvent::StreamData, s_event_data, (void *)stream_handle);
       bytes = length;
     }

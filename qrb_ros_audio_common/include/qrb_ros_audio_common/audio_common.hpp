@@ -103,7 +103,6 @@ private:
   rclcpp::TimerBase::SharedPtr latency_log_timer_;
   std::atomic<bool> latency_log_enabled_{ false };
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_callback_handle_;
-  std::chrono::steady_clock::time_point capture_data_ready_time_;
 };
 
 }  // namespace audio_common

@@ -309,26 +309,24 @@ void AudioCommonNode::stream_monitor(const std::shared_ptr<GoalHandleStream> goa
         case StreamEvent::StreamStart:
           current_stream_state_ = event.event;
           break;
-        case StreamEvent::StreamDataReady: {
-          if (latency_log_enabled_.load())
-            capture_data_ready_time_ = std::chrono::steady_clock::now();
-          break;
-        }
         case StreamEvent::StreamData: {
           bool log_enabled = latency_log_enabled_.load();
+          std::chrono::steady_clock::time_point publish_start;
+          if (log_enabled)
+            publish_start = std::chrono::steady_clock::now();
 
           qrb_ros_audio_common_msgs::msg::AudioData audio_data_msg;
           audio_data_msg.stream_handle = event.stream_handle;
-          audio_data_msg.data.resize(event.s_event_data.data.data_size);
-          memcpy(&audio_data_msg.data[0], (void *)event.s_event_data.data.data_ptr,
-              event.s_event_data.data.data_size);
+          if (event.s_event_data.data_buf)
+            audio_data_msg.data = std::move(*event.s_event_data.data_buf);
           audio_data_pub_->publish(audio_data_msg);
 
           if (log_enabled) {
             auto t2 = std::chrono::steady_clock::now();
-            uint64_t latency_usec =
-                std::chrono::duration_cast<std::chrono::microseconds>(t2 - capture_data_ready_time_)
-                    .count();
+            uint64_t publish_usec =
+                std::chrono::duration_cast<std::chrono::microseconds>(t2 - publish_start).count();
+            // total latency = capture read time (recorded by capture_stream) + publish time
+            uint64_t latency_usec = event.s_event_data.usec + publish_usec;
             update_latency_stats(
                 capture_latency_stats_, static_cast<uint32_t>(stream_handle), latency_usec);
           }

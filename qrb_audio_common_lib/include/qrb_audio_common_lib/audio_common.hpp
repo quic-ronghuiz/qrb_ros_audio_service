@@ -14,6 +14,7 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -79,17 +80,13 @@ enum class StreamEvent
   StreamAbort,
   StreamTimestamp,
   StreamData,
-  StreamDataReady,
 };
 
-union Stream_Event_Data
+struct Stream_Event_Data
 {
-  struct
-  {
-    intptr_t data_ptr;
-    size_t data_size;
-  } data;
-  uint64_t usec;
+  std::shared_ptr<std::vector<uint8_t>> data_buf;
+  uint64_t usec = 0;  // for StreamTimestamp: playback/capture timestamp
+                       // for StreamData: time spent reading/processing the data chunk
 };
 
 struct audio_stream_info
