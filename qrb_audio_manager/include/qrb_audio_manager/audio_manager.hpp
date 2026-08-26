@@ -5,9 +5,11 @@
 #define QRB_AUDIO_MANAGER__AUDIO_MANAGER_HPP_
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "qrb_audio_manager/message_queue.hpp"
 #include "qrb_audio_manager/stream.hpp"
@@ -67,7 +69,8 @@ extern std::map<std::string, AudioManagerCommand> audio_manager_cmd_name;
 
 extern std::map<std::string, AudioManagerPlayMode> audio_manager_play_mode;
 
-using stream_data_cb_t = std::function<void(uint32_t, const void *, size_t)>;
+using stream_data_cb_t =
+    std::function<void(uint32_t, std::shared_ptr<std::vector<uint8_t>>, uint64_t)>;
 
 class AudioManager : public IAudioManager
 {

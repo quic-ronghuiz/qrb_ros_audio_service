@@ -6,7 +6,9 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
+#include <vector>
 
 namespace qrb
 {
@@ -30,14 +32,10 @@ enum class StreamEvent
   StreamEos,
 };
 
-union StreamEventData
+struct StreamEventData
 {
-  struct
-  {
-    intptr_t data_ptr;
-    size_t data_size;
-  } data;
-  uint64_t usec;
+  std::shared_ptr<std::vector<uint8_t>> data_buf;
+  uint64_t usec = 0;
 };
 
 struct AudioStreamInfo

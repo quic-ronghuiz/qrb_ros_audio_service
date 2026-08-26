@@ -363,7 +363,7 @@ AlsaPlaybackStream::~AlsaPlaybackStream()
 int AlsaPlaybackStream::start_stream()
 {
   running_ = true;
-  StreamEventData dummy{};
+  StreamEventData dummy;
   event_cb(StreamEvent::StreamStart, dummy, (void *)(intptr_t)handle_);
 
   if (pcm_mode) {
@@ -417,7 +417,7 @@ void AlsaPlaybackStream::file_playback_thread()
   if (running_) {
     snd_pcm_drain(pcm_handle_);
     running_ = false;
-    StreamEventData dummy{};
+    StreamEventData dummy;
     event_cb(StreamEvent::StreamEos, dummy, (void *)(intptr_t)handle_);
     event_cb(StreamEvent::StreamStoped, dummy, (void *)(intptr_t)handle_);
   }
@@ -549,7 +549,7 @@ AlsaCaptureStream::~AlsaCaptureStream()
 int AlsaCaptureStream::start_stream()
 {
   running_ = true;
-  StreamEventData dummy{};
+  StreamEventData dummy;
   event_cb(StreamEvent::StreamStart, dummy, (void *)(intptr_t)handle_);
   worker_thread_ = std::thread(&AlsaCaptureStream::capture_thread, this);
   return 0;
@@ -563,6 +563,8 @@ void AlsaCaptureStream::capture_thread()
   std::vector<uint8_t> buf(buf_size);
 
   while (running_) {
+    std::chrono::steady_clock::time_point read_start = std::chrono::steady_clock::now();
+
     snd_pcm_sframes_t frames_read = snd_pcm_readi(pcm_handle_, buf.data(), period_frames);
     if (frames_read < 0) {
       frames_read = snd_pcm_recover(pcm_handle_, frames_read, 0);
@@ -579,14 +581,21 @@ void AlsaCaptureStream::capture_thread()
       sf_write_raw(snd_file_, buf.data(), bytes);
 
     if (pcm_mode) {
-      StreamEventData s_event_data{};
-      s_event_data.data.data_ptr = reinterpret_cast<intptr_t>(buf.data());
-      s_event_data.data.data_size = bytes;
+      StreamEventData s_event_data;
+
+      s_event_data.data_buf =
+          std::make_shared<std::vector<uint8_t>>(buf.begin(), buf.begin() + bytes);
+
+      auto read_usec = std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - read_start)
+                            .count();
+      s_event_data.usec = static_cast<uint64_t>(read_usec);
+
       event_cb(StreamEvent::StreamData, s_event_data, (void *)(intptr_t)handle_);
     }
   }
 
-  StreamEventData dummy{};
+  StreamEventData dummy;
   event_cb(StreamEvent::StreamStoped, dummy, (void *)(intptr_t)handle_);
 }
 

@@ -60,25 +60,32 @@ AudioServer::AudioServer(const rclcpp::NodeOptions & options)
   rclcpp::on_shutdown(std::bind(&AudioServer::shutdown_callback, this));
 }
 
-void AudioServer::on_stream_data(uint32_t am_handle, const void * data, size_t size)
+void AudioServer::on_stream_data(uint32_t am_handle,
+    std::shared_ptr<std::vector<uint8_t>> data_buf,
+    uint64_t usec)
 {
   bool log_enabled = latency_log_enabled_.load();
-  std::chrono::steady_clock::time_point t1;
-  if (log_enabled)
-    t1 = std::chrono::steady_clock::now();
 
   auto it = capture_pubs_.find(am_handle);
   if (it == capture_pubs_.end())
     return;
 
+  std::chrono::steady_clock::time_point publish_start;
+  if (log_enabled)
+    publish_start = std::chrono::steady_clock::now();
+
   AudioData msg;
   msg.stream_handle = am_handle;
-  msg.data.assign(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + size);
+  if (data_buf)
+    msg.data = std::move(*data_buf);
   it->second->publish(msg);
 
   if (log_enabled) {
     auto t2 = std::chrono::steady_clock::now();
-    uint64_t latency_usec = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    uint64_t publish_usec =
+        std::chrono::duration_cast<std::chrono::microseconds>(t2 - publish_start).count();
+    // total latency = capture read time (recorded by audio_common_lib) + publish time
+    uint64_t latency_usec = usec + publish_usec;
     update_latency_stats(capture_latency_stats_, am_handle, latency_usec);
   }
 }

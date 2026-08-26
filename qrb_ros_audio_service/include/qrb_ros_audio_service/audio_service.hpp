@@ -8,9 +8,12 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rmw/types.h>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <unordered_map>
+#include <vector>
 
 #include "qrb_ros_audio_service_msgs/msg/audio_data.hpp"
 #include "qrb_ros_audio_service_msgs/srv/audio_request.hpp"
@@ -55,7 +58,9 @@ private:
       const std::shared_ptr<AudioService::Request> request,
       std::shared_ptr<AudioService::Response> response);
   void shutdown_callback();
-  void on_stream_data(uint32_t am_handle, const void * data, size_t size);
+  void on_stream_data(uint32_t am_handle,
+      std::shared_ptr<std::vector<uint8_t>> data_buf,
+      uint64_t usec);
   void on_audio_data(uint32_t am_handle,
       const qrb_ros_audio_service_msgs::msg::AudioData::SharedPtr msg);
   void create_pcm_topic(uint32_t stream_handle, const std::string & topic_name, bool is_capture);

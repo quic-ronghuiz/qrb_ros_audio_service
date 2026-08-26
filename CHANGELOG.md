@@ -37,3 +37,8 @@
 - Merge qrb_ros_audio_common into qrb_ros_audio_service.
 - Add alsa backend support.
 - Contributors👉 Ronghui Zhu
+
+## 2.0.1 (2026-8-27)
+
+- Eliminate dangling pointer risk and improve capture latency measurement.
+- Contributors👉 Ronghui Zhu

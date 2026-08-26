@@ -96,8 +96,7 @@ static bool audio_common_stream_cb(const void * const payload,
             break;
           case StreamEvent::StreamData:
             if (g_stream_data_cb) {
-              g_stream_data_cb(am_handle, reinterpret_cast<const void *>(data.data.data_ptr),
-                  data.data.data_size);
+              g_stream_data_cb(am_handle, data.data_buf, data.usec);
             }
             return;
           default:
