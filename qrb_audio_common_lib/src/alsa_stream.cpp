@@ -185,8 +185,8 @@ int AlsaCommonStream::open_pcm(snd_pcm_stream_t direction)
   return err;
 }
 
-int AlsaCommonStream::set_hw_params(snd_pcm_uframes_t period_frames,
-    snd_pcm_uframes_t buffer_frames)
+int AlsaCommonStream::set_hw_params(snd_pcm_uframes_t & period_frames,
+    snd_pcm_uframes_t & buffer_frames)
 {
   snd_pcm_hw_params_t * params;
   snd_pcm_hw_params_alloca(&params);
@@ -244,6 +244,8 @@ int AlsaCommonStream::set_hw_params(snd_pcm_uframes_t period_frames,
     LOGE("snd_pcm_prepare: %s", snd_strerror(err));
     goto exit;
   }
+
+  period_frames_ = period_frames;
 
 exit:
   return err;
@@ -327,18 +329,25 @@ AlsaPlaybackStream::AlsaPlaybackStream(const AudioStreamInfo & info, stream_even
     }
     throw std::runtime_error("failed to open playback device");
   }
-  if (set_hw_params(ALSA_DEFAULT_PERIOD_FRAMES, ALSA_DEFAULT_BUFFER_FRAMES) < 0) {
-    snd_pcm_close(pcm_handle_);
-    pcm_handle_ = nullptr;
-    if (snd_file_) {
-      sf_close(snd_file_);
-      snd_file_ = nullptr;
+
+  {
+    snd_pcm_uframes_t period_frames =
+        static_cast<snd_pcm_uframes_t>(stream_info_.rate) * ALSA_PERIOD_DURATION_MS / 1000;
+    snd_pcm_uframes_t buffer_frames = period_frames * ALSA_BUFFER_PERIOD_COUNT;
+
+    if (set_hw_params(period_frames, buffer_frames) < 0) {
+      snd_pcm_close(pcm_handle_);
+      pcm_handle_ = nullptr;
+      if (snd_file_) {
+        sf_close(snd_file_);
+        snd_file_ = nullptr;
+      }
+      if (file_fd_ >= 0) {
+        close(file_fd_);
+        file_fd_ = -1;
+      }
+      throw std::runtime_error("failed to set hw params for playback");
     }
-    if (file_fd_ >= 0) {
-      close(file_fd_);
-      file_fd_ = -1;
-    }
-    throw std::runtime_error("failed to set hw params for playback");
   }
 }
 
@@ -376,7 +385,7 @@ int AlsaPlaybackStream::start_stream()
 
 void AlsaPlaybackStream::file_playback_thread()
 {
-  const snd_pcm_uframes_t period_frames = ALSA_DEFAULT_PERIOD_FRAMES;
+  const snd_pcm_uframes_t period_frames = period_frames_;
   const size_t frame_bytes = stream_info_.channels * (stream_info_.format / 8);
   const size_t buf_size = period_frames * frame_bytes;
   std::vector<uint8_t> buf(buf_size);
@@ -484,10 +493,17 @@ AlsaCaptureStream::AlsaCaptureStream(const AudioStreamInfo & info, stream_event_
   if (open_pcm(SND_PCM_STREAM_CAPTURE) < 0) {
     throw std::runtime_error("failed to open capture device");
   }
-  if (set_hw_params(ALSA_DEFAULT_PERIOD_FRAMES, ALSA_DEFAULT_BUFFER_FRAMES) < 0) {
-    snd_pcm_close(pcm_handle_);
-    pcm_handle_ = nullptr;
-    throw std::runtime_error("failed to set hw params for capture");
+
+  {
+    snd_pcm_uframes_t period_frames =
+        static_cast<snd_pcm_uframes_t>(stream_info_.rate) * ALSA_PERIOD_DURATION_MS / 1000;
+    snd_pcm_uframes_t buffer_frames = period_frames * ALSA_BUFFER_PERIOD_COUNT;
+
+    if (set_hw_params(period_frames, buffer_frames) < 0) {
+      snd_pcm_close(pcm_handle_);
+      pcm_handle_ = nullptr;
+      throw std::runtime_error("failed to set hw params for capture");
+    }
   }
 
   if (!info.file_path.empty()) {
@@ -557,7 +573,7 @@ int AlsaCaptureStream::start_stream()
 
 void AlsaCaptureStream::capture_thread()
 {
-  const snd_pcm_uframes_t period_frames = ALSA_DEFAULT_PERIOD_FRAMES;
+  const snd_pcm_uframes_t period_frames = period_frames_;
   const size_t frame_bytes = stream_info_.channels * (stream_info_.format / 8);
   const size_t buf_size = period_frames * frame_bytes;
   std::vector<uint8_t> buf(buf_size);
@@ -588,7 +604,7 @@ void AlsaCaptureStream::capture_thread()
 
       auto read_usec = std::chrono::duration_cast<std::chrono::microseconds>(
           std::chrono::steady_clock::now() - read_start)
-                            .count();
+                           .count();
       s_event_data.usec = static_cast<uint64_t>(read_usec);
 
       event_cb(StreamEvent::StreamData, s_event_data, (void *)(intptr_t)handle_);

@@ -84,7 +84,6 @@ void AudioServer::on_stream_data(uint32_t am_handle,
     auto t2 = std::chrono::steady_clock::now();
     uint64_t publish_usec =
         std::chrono::duration_cast<std::chrono::microseconds>(t2 - publish_start).count();
-    // total latency = capture read time (recorded by audio_common_lib) + publish time
     uint64_t latency_usec = usec + publish_usec;
     update_latency_stats(capture_latency_stats_, am_handle, latency_usec);
   }

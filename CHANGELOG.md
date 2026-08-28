@@ -41,4 +41,5 @@
 ## 2.0.1 (2026-8-27)
 
 - Eliminate dangling pointer risk and improve capture latency measurement.
+- Unify ALSA and PulseAudio backend capture period duration and increase it from 20ms to 80ms to reduce CPU overhead.
 - Contributors👉 Ronghui Zhu

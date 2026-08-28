@@ -22,8 +22,8 @@ namespace audio_common_lib
 {
 
 #define ALSA_DEFAULT_DEVICE "default"
-#define ALSA_DEFAULT_PERIOD_FRAMES 1024
-#define ALSA_DEFAULT_BUFFER_FRAMES 8192
+#define ALSA_PERIOD_DURATION_MS 80
+#define ALSA_BUFFER_PERIOD_COUNT 8
 
 // Device names to try, ordered by priority (first entry tried first).
 inline const std::vector<const char *> kAlsaPlaybackProbeDevices = {
@@ -51,7 +51,7 @@ protected:
   AlsaCommonStream(const AudioStreamInfo & info, stream_event_callback_func cb);
 
   int open_pcm(snd_pcm_stream_t direction);
-  int set_hw_params(snd_pcm_uframes_t period_frames, snd_pcm_uframes_t buffer_frames);
+  int set_hw_params(snd_pcm_uframes_t & period_frames, snd_pcm_uframes_t & buffer_frames);
   snd_pcm_format_t get_alsa_format() const;
 
   AudioStreamInfo stream_info_;
@@ -61,6 +61,7 @@ protected:
   bool muted_ = false;
   uint8_t volume_ = 100;
   std::string resolved_device_;
+  snd_pcm_uframes_t period_frames_ = 0;
 };
 
 class AlsaPlaybackStream : public AlsaCommonStream

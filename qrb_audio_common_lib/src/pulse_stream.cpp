@@ -16,7 +16,7 @@
 using namespace std;
 
 #define PLAYBACK_BUFFER_DURATION_MS 300
-#define CAPTURE_FRAGMENT_DURATION_MS 20
+#define CAPTURE_FRAGMENT_DURATION_MS 80
 #define RECORD_GAIN 8
 
 namespace qrb
@@ -852,13 +852,12 @@ void CaptureStream::stream_data_callback(pa_stream * stream, size_t length, void
       StreamEventData s_event_data;
       uint32_t stream_handle = IAudioStream::get_handle(current_stream);
 
-      s_event_data.data_buf =
-          std::make_shared<std::vector<uint8_t>>(static_cast<const uint8_t *>(data),
-              static_cast<const uint8_t *>(data) + length);
+      s_event_data.data_buf = std::make_shared<std::vector<uint8_t>>(
+          static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + length);
 
       auto read_usec = std::chrono::duration_cast<std::chrono::microseconds>(
           std::chrono::steady_clock::now() - read_start)
-                            .count();
+                           .count();
       s_event_data.usec = static_cast<uint64_t>(read_usec);
 
       current_stream->event_cb(StreamEvent::StreamData, s_event_data, (void *)stream_handle);
